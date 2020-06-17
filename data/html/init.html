@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <Title>Inital Config</Title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="css/common.css">
+    <link rel="stylesheet" type="text/css" href="css/init.css">
+</head>
+
+<noscript>
+    This site will likely be broken if JS is disabled. Please enable and reload the page.
+</noscript>
+
+<body>
+    <div>
+        <div class="center" id="wifi-select-div">
+            <h3>Wifi Setup</h3>
+            <label for="wifi-selection">Wifi SSID: </label>
+            <select name="wifi-selection" id="wifi-selection" onchange="wifi_type(this)" required>
+                <option value="none" selected="selected">Choose One</option>
+                <option value="WPA2">WPA2</option>
+                <option value="WPA2-E">WPA2-E</option>
+                <option value="unsecured">unsecured</option>
+            </select>
+            <form class="active" id="none">
+                <p>If you leave this empty, you'll have to connect to this access point (WIFI) every time you want to
+                    use this.<br>The timer will drift more, roughly 1 sec/day. Hostname section below will be the SSID
+                    instead.</p>
+                <button type="submit">confirm</button>
+            </form>
+            <form id="WPA2" action="/WPA2">
+                <p>Required fields are followed by <abbr title="required">*</abbr>.</p>
+                <fieldset>
+                    <legend>WPA2 Wifi</legend>
+                    <label for="WPA2-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
+                    <input type="password" id="WPA2-password" value="" placeholder="password" required>
+                    <input type="checkbox" onclick="revealPassword('WPA2-password')">Show Password<br>
+                    <button type="submit">confirm</button>
+                    <button type="reset">clear</button>
+                </fieldset>
+            </form>
+            <form id="WPA2-E" action="/WPA2-E">
+                <p>Required fields are followed by <abbr title="required">*</abbr>.</p>
+                <fieldset>
+                    <legend>WPA2-Enterprise Wifi</legend>
+                    <label for="WPA2-E-username">Username: <abbr title="required" aria-label="required">*</abbr></label>
+                    <input type="text" id="WPA2-E-username" value="" placeholder="username" required><br>
+                    <label for="WPA2-E-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
+                    <input type="password" id="WPA2-E-password" value="" placeholder="password" required>
+                    <input type="checkbox" onclick="revealPassword('WPA2-E-password')">Show Password<br>
+                    <button type="submit">confirm</button>
+                    <button type="reset">clear</button>
+                </fieldset>
+            </form>
+            <form id="unsecured" action="/unsecured">
+                <p>Unsecured WIFI isn't a good idea. You should try to get that fixed.</p>
+                <button type="submit">confirm</button>
+            </form>
+            <h5 class="confirm-text" id="confirmation-prompt" style="visibility: hidden;">Confirmed</h5>
+        </div>
+        <br>
+        <div class="center" id="credentials-div">
+            <h3>Credential Setup</h4>
+                <form id="credentials" action="/credentials" class="active">
+                    <p>Required fields are followed by <abbr title="required">*</abbr>.</p>
+                    <fieldset>
+                        <legend>Connection to Device</legend>
+                        <label for="name">
+                            <abbr id="name-label"
+                                title="The name this device will be called on the network. At least 6 characters to ensure distinctiveness. If you mess with the format, the device could break irrevocably.">SSID:</abbr>
+                            <abbr title="required" aria-label="required">*</abbr>
+                        </label>
+                        <input type="text" id="name" value="" placeholder="SSID"
+                            pattern="^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$"
+                            maxlength="63" minlength="6" required> <br> <br>
+                        <p>Note that not much money was spent on security so please make sure
+                            it's not the same as a password for something important.</p>
+                        <label for="password">
+                            <abbr title="Login password to prevent bad actors from randomly accessing.">Password:</abbr>
+                            <abbr title="required" aria-label="required">*</abbr>
+                        </label>
+                        <input type="password" class="password" id="password" value="" placeholder="password"
+                            minlength="6" required>
+                        <input type="checkbox" onclick="revealPassword('password')">Show Password<br><br>
+                        <h4>When you're done, restart device to use the given settings. </h4>
+                        <p>By using, you agree to cookies, which are required for this product. <br>This timer may be
+                            off by a few seconds under normal usage.<br>Extra lingo: If you mess
+                            with format validation, and the device is irrevocable, that's on you. We can try to help you
+                            recover it, but no guarantees.</p>
+                        <button type="submit" value="init-restart">Restart Device</button>
+                        <button type="reset">clear</button>
+                    </fieldset>
+                </form>
+        </div>
+</body>
+<script src="js/common.js"></script>
+<script src="js/init.js"></script>
+
+</html>

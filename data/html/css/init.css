@@ -1,0 +1,17 @@
+form {
+    display: none;
+}
+
+form.active {
+  display: block;
+  padding: 1.25rem;
+}
+
+input {
+    margin-top: 1rem;
+}
+
+button {
+    margin-top: 1rem;
+    margin: 0.5rem;
+}

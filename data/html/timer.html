@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <Title>Timer</Title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="css/common.css">
+
+</head>
+
+<body style="margin: 0px;">
+    <nav class="topnav">
+        <a class="active">Timer</a>
+        <a href="./settings.html">Settings</a>
+        <a id="hostname-display" style="float: right;">Hostname</a>
+    </nav>
+    <div style="margin-top: 2rem;">
+        <form class="center" id="timer">
+            <fieldset>
+                <legend>Timer</legend>
+                <label for="set-timer">Duration (hrs:min:sec): <abbr title="required"
+                        aria-label="required">*</abbr></label>
+                <input type="number" id="timer-time-hrs" min="0" value="0" placeholder="0" onchange="validateTime()"
+                    required>:
+                <input type="number" id="timer-time-min" min="0" max="59" value="0" placeholder="0"
+                    onchange="validateTime()" required>:
+                <input type="number" id="timer-time-sec" min="0" max="59" value="5" placeholder="0"
+                    onchange="validateTime()" required>
+                <button type="submit" style="float:right">Start Timer</button>
+            </fieldset>
+        </form>
+        <form class="center" id="timer-change">
+            <fieldset>
+                <legend><abbr title="Subtract time by adding a negative number.">Add/Subtract</abbr> Time</legend>
+                <label for="timer-change"><abbr
+                        title="Can't make the remaining time less than 10 seconds.">Duration</abbr> (hrs:min:sec): <abbr
+                        title="required" aria-label="required">*</abbr></label>
+                <input type="number" id="timer-time-hrs-change" value="0" placeholder="0" onchange="validateTimeDiff()"
+                    required>:
+                <input type="number" id="timer-time-min-change" min="-59" max="59" value="0" placeholder="0"
+                    onchange="validateTimeDiff()" required>:
+                <input type="number" id="timer-time-sec-change" min="-59" max="59" value="0" placeholder="0"
+                    onchange="validateTimeDiff()" required>
+                <input type="checkbox" id="subtle-change"> <abbr
+                    title="Attempts to add time to the timer subtly by factoring in the extra time split between the remaining lit LEDs. Total remaining time will be shown on screen. Works better when lots of LEDs are still lit, and is a small time change in comparison to the remaining time left.">Subtle</abbr>
+                <button type="submit">Submit</button>
+            </fieldset>
+        </form>
+    </div>
+    <div id="timeleft" style="font-size:18rem; text-align: center;"></div>
+</body>
+
+<script src="js/common.js"></script>
+<script src="js/timer.js"></script>
+<script src="js/sjcl.js"></script>
+
+</html>
+<div id="verification" style="display: none">

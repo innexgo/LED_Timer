@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <Title>Login</Title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="css/common.css">
+</head>
+
+<body>
+    <div style="margin-top: 2rem;">
+        <form class="center" id="login" action="/login">
+            <fieldset>
+                <legend>Login</legend>
+                <label for="login-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
+                <input type="password" id="login-password" value="" placeholder="password" required>
+                <input type="checkbox" onclick="revealPassword('login-password')">Show Password<br><br>
+                <button type="submit" onclick="savePassword()">login</button>
+            </fieldset>
+        </form>
+    </div>
+</body>
+
+<script src="js/common.js"></script>
+<script src="js/login.js"></script>
+<script src="js/sjcl.js"></script>
+
+</html>
+<div id="verification" style="display: none">
