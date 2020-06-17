@@ -18,6 +18,11 @@
 ESP8266WebServer server(80);
 
 void handleInitPage(void){
+  File init_page_file = LittleFS.open("/html/init.html", "r");
+  String init_page_string = init_page_file.readString();
+  init_page_file.close();
+
+  server.send(200, "text/html", init_page_string.c_str());
 }
 
 void handleInit(void) {
@@ -63,19 +68,28 @@ void initStationWifi(void) {
   WiFi.softAP(wifi_station_values[0], wifi_station_values[1], 1, 0, 1); // last two are default, but only allow one connector.
 }
 
+void setHostname(void) {
+  File hostname_file = LittleFS.open("/wifi/hostname.txt", "r");
+  String hostname_string = hostname_file.readString();
+  hostname_file.close();
+
+  WiFi.hostname(hostname_string.c_str());
+}
+
 void initWifi(void) {
   File wifi_method_file = LittleFS.open("/wifi/method.txt", "r");
   String wifi_method_string = wifi_method_file.readString();
   wifi_method_file.close();
   const char *wifi_method = wifi_method_string.c_str();
 
-  //TODO set up wifi methods.
   if (strcmp(wifi_method, "none") == 0) {
     Serial.println("Starting Internal Station");
     initStationWifi();
   }
   else if (strcmp(wifi_method, "WPA2") == 0) {
     Serial.println("Connecting to WiFi through WPA2");
+    setHostname();
+    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
 
     File wifi_SSID_file = LittleFS.open("/wifi/SSID.txt", "r");
     String wifi_SSID_string = wifi_SSID_file.readString();
@@ -89,6 +103,8 @@ void initWifi(void) {
   }
   else if (strcmp(wifi_method, "WPA2E") == 0) {
     Serial.println("Connecting to WiFi through WPA2E");
+    setHostname();
+    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
 
     File wifi_user_file = LittleFS.open("/wifi/user.txt", "r");
     
@@ -117,8 +133,9 @@ void initWifi(void) {
 
   }
   else if (strcmp(wifi_method, "unsecured") == 0) {
-
     Serial.println("Connecting to Wifi through unencrypted air.");
+    setHostname();
+    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
 
     File wifi_SSID_file = LittleFS.open("/wifi/SSID.txt", "r");
     String wifi_SSID_string = wifi_SSID_file.readString();
@@ -138,8 +155,12 @@ void handleLoginPage(void) {
 
 }
 
-void handleNotFound(void) {
+void handleCredentialLogin(void) {
 
+}
+
+void handleNotFound(void) {
+  server.send(404, "text/plain", "404, Resource not Found.");
 }
 
 void readButton(void) {
@@ -173,6 +194,8 @@ void setup(void) {
 
   char config_chars[config_size + 1];
   byte size = config_file.readBytes(config_chars, config_size);
+
+  config_file.close();
 
   config_chars[size] = 0;
 
