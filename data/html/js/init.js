@@ -29,8 +29,8 @@ function wifi_type(object) {
         document.getElementById("name-label").innerText = "Hostname: "
     }
     else {
-        document.getElementById("name").placeholder = "SSID";
-        document.getElementById("name-label").innerText = "SSID: "
+        document.getElementById("name").placeholder = "hostname/SSID";
+        document.getElementById("name-label").innerText = "Hostname/SSID: "
     };
     document.getElementById("confirmation-prompt").style.visibility = "hidden";
 };

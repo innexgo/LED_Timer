@@ -4,10 +4,11 @@
 #include <ESP8266WebServer.h>
 #include <Crypto.h>
 #include <LittleFS.h>
-#include <wpa2_enterprise.h>
 
 #define FASTLED_ESP8266_RAW_PIN_ORDER
 #include <FastLED.h>
+
+#include "wifi_select.h"
 
 #define NUM_LEDS 60
 #define DATA_PIN 13
@@ -17,16 +18,34 @@
 
 ESP8266WebServer server(80);
 
-void handleInitPage(void){
+void handleCommonJS(void) {
+  File common_js_file = LittleFS.open("/html/js/common.js", "r");
+  String common_js_string = common_js_file.readString();
+  common_js_file.close();
+
+  const char *common_js_chars = common_js_string.c_str();
+
+  server.send(200, "text/js", common_js_chars);
+}
+
+void handleInitPage(void) {
   File init_page_file = LittleFS.open("/html/init.html", "r");
   String init_page_string = init_page_file.readString();
   init_page_file.close();
 
-  server.send(200, "text/html", init_page_string.c_str());
+  const char *init_page_chars = init_page_string.c_str();
+
+  server.send(200, "text/html", init_page_chars);
 }
 
-void handleInit(void) {
-  // Write to config file, keeping idle configs static.
+void handleInitJS(void) {
+  File init_js_file = LittleFS.open("/html/js/init.js", "r");
+  String init_js_string = init_js_file.readString();
+  init_js_file.close();
+
+  const char *init_js_chars = init_js_string.c_str();
+
+  server.send(200, "text/js", init_js_chars);
 }
 
 void handleWifiConfig(void) {
@@ -35,120 +54,6 @@ void handleWifiConfig(void) {
 
 void handleCredentialsConfig(void) {
 
-}
-
-void initStationWifi(void) {
-  File wifi_station_file = LittleFS.open("wifi/station.txt", "r"); // Don't allow this to change to prevent this from becoming a fancy paperweight.
-  int wifi_station_file_size = wifi_station_file.size();
-
-  char wifi_station_chars[wifi_station_file_size + 1];
-  byte size = wifi_station_file.readBytes(wifi_station_chars, wifi_station_file_size);
-
-  wifi_station_chars[size] = 0; // set null character
-
-  char *delimiters = " "; // Delimit with a space
-
-  char *pch = strtok(wifi_station_chars , delimiters);
-
-  char *wifi_station_values[2];
-
-  /* Station file values:
-  // 0: SSID
-  // 1: Password
-  */
-
-  int pos = 0;
-
-  while (pch != NULL) {
-    wifi_station_values[pos] = pch;
-    pos++;
-    pch = strtok (0, delimiters);
-  }
-
-  WiFi.softAP(wifi_station_values[0], wifi_station_values[1], 1, 0, 1); // last two are default, but only allow one connector.
-}
-
-void setHostname(void) {
-  File hostname_file = LittleFS.open("/wifi/hostname.txt", "r");
-  String hostname_string = hostname_file.readString();
-  hostname_file.close();
-
-  WiFi.hostname(hostname_string.c_str());
-}
-
-void initWifi(void) {
-  File wifi_method_file = LittleFS.open("/wifi/method.txt", "r");
-  String wifi_method_string = wifi_method_file.readString();
-  wifi_method_file.close();
-  const char *wifi_method = wifi_method_string.c_str();
-
-  if (strcmp(wifi_method, "none") == 0) {
-    Serial.println("Starting Internal Station");
-    initStationWifi();
-  }
-  else if (strcmp(wifi_method, "WPA2") == 0) {
-    Serial.println("Connecting to WiFi through WPA2");
-    setHostname();
-    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
-
-    File wifi_SSID_file = LittleFS.open("/wifi/SSID.txt", "r");
-    String wifi_SSID_string = wifi_SSID_file.readString();
-    wifi_SSID_file.close();
-
-    File wifi_pass_file = LittleFS.open("/wifi/pass.txt", "r");
-    String wifi_pass_string = wifi_pass_file.readString();
-    wifi_pass_file.close();
-
-    WiFi.begin(wifi_SSID_string, wifi_pass_string);
-  }
-  else if (strcmp(wifi_method, "WPA2E") == 0) {
-    Serial.println("Connecting to WiFi through WPA2E");
-    setHostname();
-    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
-
-    File wifi_user_file = LittleFS.open("/wifi/user.txt", "r");
-    
-    int wifi_user_file_size = wifi_user_file.size();
-    char wifi_user_chars[(wifi_user_file_size + 1)];
-    byte user_size = wifi_user_file.readBytes(wifi_user_chars, wifi_user_file_size);
-    wifi_user_chars[user_size] = 0;
-
-    wifi_user_file.close();
-
-    unsigned char* wifi_user_unsigned_chars = reinterpret_cast<unsigned char*>(wifi_user_chars);
-
-    File wifi_pass_file = LittleFS.open("/wifi/pass.txt", "r");
-
-    int wifi_pass_file_size = wifi_pass_file.size();
-    char wifi_pass_chars[(wifi_pass_file_size + 1)];
-    byte pass_size = wifi_pass_file.readBytes(wifi_pass_chars, wifi_pass_file_size);
-    wifi_pass_chars[pass_size] = 0;
-
-    wifi_pass_file.close();
-
-    unsigned char* wifi_pass_unsigned_chars = reinterpret_cast<unsigned char*>(wifi_pass_chars);
-        
-    wifi_station_set_wpa2_enterprise_auth(1);
-    wifi_station_set_enterprise_username(wifi_user_unsigned_chars, wifi_user_file_size);
-
-  }
-  else if (strcmp(wifi_method, "unsecured") == 0) {
-    Serial.println("Connecting to Wifi through unencrypted air.");
-    setHostname();
-    Serial.printf("Hostname: %s\n", WiFi.hostname().c_str());
-
-    File wifi_SSID_file = LittleFS.open("/wifi/SSID.txt", "r");
-    String wifi_SSID_string = wifi_SSID_file.readString();
-    wifi_SSID_file.close();
-
-    WiFi.begin(wifi_SSID_string);
-  }
-  else {
-    Serial.print("Wifi Protocol Unrecognized: ");
-    Serial.println(wifi_method);
-    Serial.println("Starting Internal Station");
-    initStationWifi();
-  }
 }
 
 void handleLoginPage(void) {
@@ -230,8 +135,10 @@ void setup(void) {
   else {
     Serial.println("CV0: False");
     // Init code.
-    initStationWifi();
+    // initStationWifi(); //TODO Replace this, taken out for testing.
     server.on("/", handleInitPage);
+    server.on("/init.html", handleInitPage);
+    server.on("/js/init.js", handleInitJS);
     server.on("/wifi", handleWifiConfig);
     server.on("/credentials", handleCredentialsConfig);
   }
@@ -252,11 +159,16 @@ void setup(void) {
     Serial.println("Starting WiFi");
     initWifi();
   }
+
+  server.on("/js/common.js", handleCommonJS);
+
+  server.begin();
 }
 
 
 void loop(void) {
   unsigned long current_ms = millis();
 
+  server.handleClient();
   readButton();
 }
