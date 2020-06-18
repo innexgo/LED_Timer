@@ -16,10 +16,10 @@ function handleLogin(event) {
     var tohash = time + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        time: time,
-        hash: hashBits
-    });
+    var data = {
+        "time": time,
+        "hash": hashBits
+    };
     var xhrRequest = new postData(data, "/login");
     xhrRequest.then(response => function () {
         window.location.href = response.url;

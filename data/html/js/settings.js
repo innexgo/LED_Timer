@@ -46,14 +46,14 @@ async function handleCountdownButton(event) {
     var tohash = cur_time + countdown_min + countdown_sec + enabled + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        verification: verification,
-        time: cur_time,
-        countdown_min: countdown_min,
-        countdown_sec: countdown_sec,
-        enabled: enabled,
-        hash: hashBits
-    });
+    var data = {
+        "verification": verification,
+        "time": cur_time,
+        "countdown_min": countdown_min,
+        "countdown_sec": countdown_sec,
+        "enabled": enabled,
+        "hash": hashBits
+    };
     var xhrRequest = postData(data, "/countdown");
     xhrRequest.then(
         async function () {
@@ -91,15 +91,15 @@ async function handleWarningButton(event) {
     var tohash = cur_time + warn_hrs + warn_min + warn_sec + enabled + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        verification: verification,
-        time: cur_time,
-        warn_hrs: warn_hrs,
-        warn_min: warn_min,
-        warn_sec, warn_sec,
-        enabled: enabled,
-        hash: hashBits
-    });
+    var data = {
+        "verification": verification,
+        "time": cur_time,
+        "warn_hrs": warn_hrs,
+        "warn_min": warn_min,
+        "warn_sec": warn_sec,
+        "enabled": enabled,
+        "hash": hashBits
+    };
     var xhrRequest = postData(data, "/warn");
     xhrRequest.then(
         async function () {
@@ -134,15 +134,15 @@ async function handleIdleButton(event) {
     var tohash = cur_time + idle_color + enabled + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        verification: verification,
-        time: cur_time,
-        warn_hrs: warn_hrs,
-        warn_min: warn_min,
-        warn_sec, warn_sec,
-        enabled: enabled,
-        hash: hashBits
-    });
+    var data = {
+        "verification": verification,
+        "time": cur_time,
+        "warn_hrs": warn_hrs,
+        "warn_min": warn_min,
+        "warn_sec": warn_sec,
+        "enabled": enabled,
+        "hash": hashBits
+    };
     var xhrRequest = postData(data, "/idle");
     xhrRequest.then(
         async function () {

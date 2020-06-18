@@ -150,13 +150,13 @@ function sendToTimer() {
     var tohash = cur_time + epoch_end_time + seconds + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        verification:verification,
-        time: cur_time,
-        end: epoch_end_time,
-        duration: seconds,
-        hash: hashBits
-    });
+    var data = {
+        "verification": verification,
+        "time": cur_time,
+        "end": epoch_end_time,
+        "duration": seconds,
+        "hash": hashBits
+    };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
         function () { },
@@ -224,14 +224,14 @@ function addTime() {
     var tohash = cur_time + mod_epoch_end_time + mod_seconds + subtle + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = JSON.stringify({
-        verification: verification,
-        time: cur_time,
-        end: mod_epoch_end_time,
-        duration: mod_seconds,
-        subtle: subtle,
-        hash: hashBits
-    });
+    var data = {
+        "verification": verification,
+        "time": cur_time,
+        "end": mod_epoch_end_time,
+        "duration": mod_seconds,
+        "subtle": subtle,
+        "hash": hashBits
+    };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
         function () { },

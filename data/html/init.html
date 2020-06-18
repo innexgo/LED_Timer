@@ -17,7 +17,13 @@
         <div class="center" id="wifi-select-div">
             <h3>Wifi Setup</h3>
             <label for="wifi-selection">Wifi SSID: </label>
-            <select name="wifi-selection" id="wifi-selection" onchange="wifi_type(this)" required>
+            <select name="wifi-selection" id="wifi-selection" onchange="wifi_type()" required>
+                <option value="none" selected="selected">Choose One</option>
+                <option value="auto">Hidden Network</abbr></option>
+            </select> <p id="hidden-non-guarantee">Not guaranteed to work properly.</p>
+            <div style="width: 2rem; height: 1rem"></div>
+            <label id="wifi-selection-two-label" for="wifi-selection-two" style="display:none">Wifi Security: </label>
+            <select name="wifi-selection-two" id="wifi-selection-two" style="display:none" onchange="wifi_type()" required>
                 <option value="none" selected="selected">Choose One</option>
                 <option value="WPA2">WPA2</option>
                 <option value="WPA2-E">WPA2-E</option>
@@ -68,10 +74,11 @@
                         <legend>Connection to Device</legend>
                         <label for="name">
                             <abbr id="name-label"
-                                title="The name this device will be called on the network. At least 6 characters to ensure distinctiveness. If you mess with the format, the device could break irrevocably.">SSID:</abbr>
+                                title="The name this device will be called on the network. At least 6 characters to ensure distinctiveness. If you mess with the format, the device could break irrevocably.">
+                                Hostname/SSID:</abbr>
                             <abbr title="required" aria-label="required">*</abbr>
                         </label>
-                        <input type="text" id="name" value="" placeholder="Hostname/SSID"
+                        <input type="text" id="name" value="" placeholder="hostname/SSID"
                             pattern="^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$"
                             maxlength="63" minlength="6" required> <br> <br>
                         <p>Note that not much money was spent on security so please make sure
@@ -96,5 +103,6 @@
 </body>
 <script src="js/common.js"></script>
 <script src="js/init.js"></script>
+<script src="js/foundNetworks.js"></script>
 
 </html>
