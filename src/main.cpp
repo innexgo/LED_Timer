@@ -2,22 +2,28 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
-#include <Crypto.h>
 #include <LittleFS.h>
 #include <regex.h>
-
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <ESP8266TrueRandom.h>
 
 #define FASTLED_ESP8266_RAW_PIN_ORDER
 #include <FastLED.h>
 
 #include "wifi_select.h"
+#include "Crypto.h"
 
 #define NUM_LEDS 60
 #define DATA_PIN 13
 #define BUTTON_PIN 5
 #define DEBUG true
+#define UTC_OFFSET 2208988800ULL
 
 String default_color = "686868";
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0); // 0 for no timezone offset
 
 ESP8266WebServer server(80);
 
@@ -280,6 +286,58 @@ void handleCredentialsConfig(void) {
   resetFunc();
 }
 
+void generateVerification(void) {
+  ESP8266TrueRandomClass random_gen;
+
+  int gen_length = random_gen.random(20, 50);
+  char verif_buf[gen_length];
+  
+  random_gen.memfill(&verif_buf[0], gen_length);
+
+  SHA256 hasher;
+  //hasher.doUpdate(verif_buf, gen_length);
+  hasher.doUpdate("SECONDASOIHAWOIURHG**IU WHQIWasUHDOHASFDI TEST");
+  byte hash[SHA256_SIZE];
+  hasher.doFinal(hash);
+
+  Serial.printf("Length of Verif Data: %d\n", gen_length);
+
+  unsigned char hash_char[33];
+  memcpy(hash_char, hash, SHA256_SIZE);
+  hash_char[33] = 0;
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  for (int i; i < SHA256_SIZE; i++) {
+    Serial.print(hash[i], HEX);
+  }
+  Serial.printf("\n");
+
+  // Needs to be the opposite way because of how arrays append.
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+  Serial.printf("%s\n", hash_str);
+
+  char hash_char_str[64];
+  strcpy(hash_char_str, hash_str);
+  File verification_file = LittleFS.open("verif.txt", "w");
+  verification_file.write((const char*)hash_char_str);
+  verification_file.close();
+}
+
 void handleLoginPage(void) {
   File login_page_file = LittleFS.open("/html/login.html", "r");
   String login_page_string = login_page_file.readString();
@@ -290,7 +348,43 @@ void handleLoginPage(void) {
 }
 
 void handleCredentialLogin(void) {
+ if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
 
+  char inc_hash[65];
+  char inc_time[21];
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      strcpy(inc_hash, server.arg(i).c_str());
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 20) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      strcpy(inc_time, server.arg(i).c_str());
+    }
+  }
+
+  SHA256 hasher;
+  byte hash[32];
+  //hasher.update(, strlen(hello));
 }
 
 void handleNotFound(void) {
@@ -363,6 +457,7 @@ void setup(void) {
   if (strcmp(config_values[0], true_ptr) == 0) {
     Serial.println("CV0: True");
     server.on("/", handleLoginPage);
+    server.on("/login", handleCredentialLogin);
     initWifi();
   }
   else {
@@ -401,6 +496,9 @@ void setup(void) {
 
   Serial.println("Starting WiFi");
   initWifi();
+
+  Serial.println("Generating Verification Data");
+  generateVerification();
 
   server.on("/js/common.js", handleCommonJS);
   server.on("/css/common.css", handleCommonCSS);
