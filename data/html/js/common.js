@@ -42,7 +42,6 @@ function postData(data, url) {
 }
 
 function errorAlert(response) {
-    alert("The server replied " + String(response.statusText) + ".\n Please try again." + 
-            ((response.responseText == "") ? "" : ("In addition, the server said: " + response.responseText)));
-    return 0;
+    alert("The server replied: " + String(response.statusText) + ".\nPlease try again.\n" + 
+            ((response.responseText == "") ? "" : ("In addition, the server said: " + String(response.responseText))));
 }

@@ -33,7 +33,13 @@ void initStationWifi(void) {
     pch = strtok (0, delimiters);
   }
 
-  WiFi.softAP(wifi_station_values[0], wifi_station_values[1], 1, 0, 1); // last two are default, but only allow one connector.
+  WiFi.mode(WIFI_AP_STA);
+  boolean started = WiFi.softAP(wifi_station_values[0], wifi_station_values[1], 1, 0, 1); // last two are default, but only allow one connector.
+
+  while (!started) {
+    delay(500);
+    Serial.print(".");
+  }
 }
 
 void setHostname(void) {
@@ -55,9 +61,16 @@ void initWifi(void) {
   WiFi.softAPdisconnect();
   setHostname();
 
-  File wifi_method_file = LittleFS.open("/wifi/method.txt", "r");
-  String wifi_method_string = wifi_method_file.readString();
-  wifi_method_file.close();
+  String wifi_method_string;
+  if (LittleFS.exists("/wifi/method.txt")) {
+    File wifi_method_file = LittleFS.open("/wifi/method.txt", "r");
+    wifi_method_string = wifi_method_file.readString();
+    wifi_method_file.close();
+  }
+  else {
+    wifi_method_string = "none";
+  }
+  
   const char *wifi_method = wifi_method_string.c_str();
 
   if (strcmp(wifi_method, "none") == 0) {

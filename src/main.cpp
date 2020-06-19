@@ -17,6 +17,7 @@
 #define BUTTON_PIN 5
 #define DEBUG true
 
+String default_color = "686868";
 
 ESP8266WebServer server(80);
 
@@ -114,15 +115,68 @@ void handleWifiConfig(void) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
-  String message = "POST form was:\n";
   for (uint8_t i = 0; i < server.args(); i++) {
-      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-      Serial.println(server.argName(i));
-      Serial.println(server.arg(i));
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "SSID") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 250) {
+        server.send(400, "text/plain", "SSID way too long. Stop sending fake requests.");
+        return;
+      }
+
+      File wifi_SSID = LittleFS.open("/wifi/SSID.txt", "w");
+      const char *SSID_chars = server.arg(i).c_str();
+      wifi_SSID.write(SSID_chars);
+      wifi_SSID.close();
     }
 
-  Serial.print(message);
-  server.send(200, "text/plain", message);
+    if (server.argName(i) == "user") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 250) {
+        server.send(400, "text/plain", "Username way too long. Try a shorter one");
+        return;
+      }
+
+      File wifi_user = LittleFS.open("/wifi/user.txt", "w");
+      const char *user_chars = server.arg(i).c_str();
+      wifi_user.write(user_chars);
+      wifi_user.close();
+    }
+
+    if (server.argName(i) == "pass") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 250) {
+        server.send(400, "text/plain", "Password way too long. Try a shorter one");
+        return;
+      }
+
+      File wifi_pass = LittleFS.open("/wifi/pass.txt", "w");
+      const char *pass_chars = server.arg(i).c_str();
+      wifi_pass.write(pass_chars);
+      wifi_pass.close();
+    }
+
+    if (server.argName(i) == "type") {
+      String conn_type = server.arg(i);
+
+      if (!(conn_type == "none" || conn_type == "WPA2" || conn_type == "WPA2E" || conn_type == "unsecured")) {
+        server.send(400, "text/plain", "That option doesn't exist, stop sending fake requests.");
+        return;
+      }
+
+      File wifi_conn_type = LittleFS.open("/wifi/method.txt", "w");
+      const char *conn_type_chars = server.arg(i).c_str();
+      wifi_conn_type.write(conn_type_chars);
+      wifi_conn_type.close();
+    }
+  }
+
+  server.send(200, "text/plain", "Valid Data Recieved");
 
 }
 
@@ -131,16 +185,18 @@ void handleCredentialsConfig(void) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
+  if (!LittleFS.exists("/wifi/method.txt")) {
+    server.send(412, "text/plain", "Precondition not met, wifi connection type not chosen.");
+    return;
+  }
 
-  String message = "POST form was:\n";
   for (uint8_t i = 0; i < server.args(); i++) {
     Serial.printf("%s ", server.argName(i).c_str());
     Serial.println(server.arg(i));
 
     if (server.argName(i) == "name") {
-
       int length = strlen(server.arg(i).c_str());
-      
+
       if (length >= 250) {
         server.send(400, "text/plain", "Hostname way too long.");
         return;
@@ -162,7 +218,6 @@ void handleCredentialsConfig(void) {
       }
 
       strcpy(hostname, server.arg(i).c_str());
-      Serial.println(hostname);
 
       ret_int = regexec(&name_pattern, hostname, 0, NULL, 0);
 
@@ -170,7 +225,10 @@ void handleCredentialsConfig(void) {
 
       if (!ret_int) {
         Serial.println("Hostname input valid");
-        return;
+        File hostname_file = LittleFS.open("/wifi/hostname.txt", "w");
+        const char *hostname_chars = server.arg(i).c_str();
+        hostname_file.write(hostname_chars);
+        hostname_file.close();
       }
       else if (ret_int == REG_NOMATCH) {
         Serial.println("Hostname input NOT valid");
@@ -183,13 +241,52 @@ void handleCredentialsConfig(void) {
         return;
       }
     }
+
+    if (server.argName(i) == "pass") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 250) {
+        server.send(400, "text/plain", "Password way too long.");
+        return;
+      }
+
+      if (length < 6) {
+        server.send(400, "text/plain", "Password must be greater than 6 characters long.");
+        return;
+      }
+
+      File pass_file = LittleFS.open("/pass.txt", "w");
+      const char *pass_chars = server.arg(i).c_str();
+      pass_file.write(pass_chars);
+      pass_file.close();
+    }
   }
 
   server.send(200, "text/plain", "Valid Data Recieved");
+
+  File config_file = LittleFS.open("/config.txt", "w");
+  const char *to_write = default_color.c_str();
+  config_file.write("True, True, ");
+  config_file.write(to_write);;
+  config_file.close();
+
+  Serial.printf("Wrote to /config.txt: %s\n", to_write);
+
+  delay(200);
+
+  void(* resetFunc) (void) = 0;//declare reset function at address 0
+
+  Serial.println("Restarting");
+  resetFunc();
 }
 
 void handleLoginPage(void) {
+  File login_page_file = LittleFS.open("/html/login.html", "r");
+  String login_page_string = login_page_file.readString();
+  const char *login_page_chars = login_page_string.c_str();
+  login_page_file.close();
 
+  server.send(200, "text/html", login_page_chars);
 }
 
 void handleCredentialLogin(void) {
@@ -209,8 +306,12 @@ void readButton(void) {
     LittleFS.remove("/wifi/pass.txt");
     LittleFS.remove("/wifi/SSID.txt");
     File config_file = LittleFS.open("/config.txt", "w");
-    config_file.write("False, True, 424242");
+    const char *to_write = default_color.c_str();
+    config_file.write("True, True, ");
+    config_file.write(to_write);
     config_file.close();
+
+    Serial.printf("Wrote to /config.txt: %s\n", to_write);
   }
 }
 
@@ -277,7 +378,6 @@ void setup(void) {
       Serial.print(".");
     }
     Serial.println("");
-    // initStationWifi(); //TODO Replace this, taken out for testing.
     server.on("/", handleInitPage);
     server.on("/init.html", handleInitPage);
     server.on("/js/init.js", handleInitJS);
@@ -299,10 +399,8 @@ void setup(void) {
     fill_solid(leds, 60, CRGB(0,0,0));
   }
 
-  if (DEBUG) {
-    Serial.println("Starting WiFi");
-    initWifi();
-  }
+  Serial.println("Starting WiFi");
+  initWifi();
 
   server.on("/js/common.js", handleCommonJS);
   server.on("/css/common.css", handleCommonCSS);

@@ -132,10 +132,10 @@ async function handleCreds(event) {
     };
     var xhrRequest = postData(data, "/credentials");
     xhrRequest.then(function () {
-        alert("Data recieved properly, please wait while the device restarts and switch to your desired method of connection, then try to connect. (~15-30 secs)")
-    }, response => function () {
-        if (response.status === 412) {
-            alert("Precondition failed, please choose and confirm a wifi option.")
+        alert("Data recieved properly, please wait while the device restarts and switch to your desired method of connection, then try to connect. (~15-30 secs)");
+    }, (response) => {
+        if (response.status == 412) {
+            alert("Precondition failed, please choose and confirm a wifi option.");
         }
         errorAlert(response);
     })
