@@ -31,8 +31,7 @@
             </select>
             <form class="active" id="none">
                 <p>If you leave this empty, you'll have to connect to this access point (WIFI) every time you want to
-                    use this.<br>The timer will drift more, roughly 1 sec/day. Hostname section below will be both SSID
-                    and Hostname instead.</p>
+                    use this.<br>The timer will drift more, roughly 1 sec/day.</p>
                 <button type="submit">confirm</button>
             </form>
             <form id="WPA2" action="/WPA2">
@@ -78,7 +77,7 @@
                                 Hostname/SSID:</abbr>
                             <abbr title="required" aria-label="required">*</abbr>
                         </label>
-                        <input type="text" id="name" value="" placeholder="hostname/SSID"
+                        <input type="text" id="name" value="" placeholder="hostname"
                             pattern="^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$"
                             maxlength="63" minlength="6" required> <br> <br>
                         <p>Note that not much money was spent on security so please make sure

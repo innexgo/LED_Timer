@@ -35,14 +35,6 @@ function wifi_type() {
 
     selected_element.className = "active";
 
-    if (wifi_type != "none") {
-        document.getElementById("name").placeholder = "hostname";
-        document.getElementById("name-label").innerText = "Hostname: "
-    }
-    else {
-        document.getElementById("name").placeholder = "hostname/SSID";
-        document.getElementById("name-label").innerText = "Hostname/SSID: "
-    };
     document.getElementById("confirmation-prompt").style.visibility = "hidden";
 
     if (wifi_selector.options[wifi_selector.selectedIndex].text == "Hidden Network") {

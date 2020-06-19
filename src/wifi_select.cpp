@@ -175,5 +175,5 @@ void initWifi(void) {
     initStationWifi();
   }
   Serial.println();
-  Serial.print("WiFi Started.");
+  Serial.println("WiFi Started");
 }
