@@ -295,8 +295,7 @@ void generateVerification(void) {
   random_gen.memfill(&verif_buf[0], gen_length);
 
   SHA256 hasher;
-  //hasher.doUpdate(verif_buf, gen_length);
-  hasher.doUpdate("SECONDASOIHAWOIURHG**IU WHQIWasUHDOHASFDI TEST");
+  hasher.doUpdate(verif_buf, gen_length);
   byte hash[SHA256_SIZE];
   hasher.doFinal(hash);
 
