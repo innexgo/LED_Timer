@@ -397,7 +397,7 @@ void handleSCJL(void) {
 
 
 void handleCredentialLogin(void) {
- if (server.method() != HTTP_POST) {
+  if (server.method() != HTTP_POST) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
@@ -428,7 +428,7 @@ void handleCredentialLogin(void) {
       int length = strlen(server.arg(i).c_str());
 
       if (length < 10) {
-        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+        server.send(400, "text/plain", "You're in the future or the past, how is it there? What's the new protocol used?\
          Anyways, if you're from this decade, 2020's, stop the fake requests.");
         return;
       }
@@ -493,7 +493,7 @@ void handleCredentialLogin(void) {
     const char *pass_chars = pass_str.c_str();
     pass_file.close();
 
-    Serial.printf("Adding pass:  %s\n", pass_chars);
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
     hasher.doUpdate(pass_chars);
   }
 
@@ -535,6 +535,134 @@ void handleCredentialLogin(void) {
     server.send(401, "text/plain", "Wrong password.");
     return;
   }
+}
+
+
+void handleTimerPage(void) {
+  File timer_page_file = LittleFS.open("/html/timer.html", "r");
+  String timer_page_string = timer_page_file.readString();
+  const char *timer_page_chars = timer_page_string.c_str();
+  timer_page_file.close();
+
+  server.send(200, "text/html", timer_page_chars);
+}
+
+void handleTimerJS(void) {
+  File timer_js_file = LittleFS.open("/html/js/timer.js", "r");
+  String timer_js_string = timer_js_file.readString();
+  const char *timer_js_chars = timer_js_string.c_str();
+  timer_js_file.close();
+
+  server.send(200, "text/javascript", timer_js_chars);
+}
+
+
+void handleSetTimer(void) {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
+
+  String inc_hash_str;
+  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
+  const char *inc_time_str; // keeping it as a string as well for easier processing later
+  unsigned long end_time = 0;
+  const char *end_time_str;
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length <= 63) {
+        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
+        return;
+      }
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_hash_str = server.arg(i);
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // Perk is that it divides by 1000 by ignoring the last 3 positions.
+      for (int pos = (length-4); pos >= 0; pos --) {
+        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+
+    if (server.argName(i) == "end") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      end_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // No need to div by 1k, already done.
+      for (int pos = (length-1); pos >= 0; pos --) {
+        end_time += (int)((((char)*(end_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      end_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+  }
+
+  if (has_internet) {
+    unsigned long sys_epoch_time =  timeClient.getEpochTime();
+
+    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
+    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
+    // cast to normal long to allow for negatives
+    if (((long)(sys_epoch_time - inc_time)) > 15) { 
+      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+  }
+
+  if (inc_time == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+  if (strcmp((inc_hash_str.c_str()), "") == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+
 }
 
 
@@ -615,6 +743,9 @@ void setup(void) {
     server.on("/login", handleCredentialLogin);
     server.on("/js/login.js", handleLoginJS);
     server.on("/js/sjcl.js", handleSCJL);
+    server.on("/timer.html", handleTimerPage);
+    server.on("/js/timer.js", handleTimerJS);
+    server.on("/timer", handleSetTimer);
   }
   else {
     Serial.println("CV0: False");
@@ -670,11 +801,11 @@ void setup(void) {
 void loop(void) {
   server.handleClient();
 
-  // if (has_internet) {
-  //   timeClient.update();
-  // }
+  if (has_internet) {
+    timeClient.update();
+  }
   ESP.wdtFeed(); // Watchdog is watching along with big brother.
   //unsigned long current_ms = millis();
 
-  // readButton();
+  readButton();
 }

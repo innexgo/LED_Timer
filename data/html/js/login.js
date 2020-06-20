@@ -21,10 +21,10 @@ function handleLogin(event) {
         "hash": hashBits.toUpperCase()
     };
     var xhrRequest = new postData(data, "/login");
-    xhrRequest.then(response => function () {
-        window.location.href = response.url;
+    xhrRequest.then( function () {
+        window.location.href = "timer.html";
     },
-        response => function () {
+        (response) => {
             if (response.status === 401) {
                 alert("Wrong password.");
             }

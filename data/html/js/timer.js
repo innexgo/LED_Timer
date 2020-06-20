@@ -151,7 +151,6 @@ function sendToTimer() {
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
-        "verification": verification,
         "time": cur_time,
         "end": epoch_end_time,
         "duration": seconds,
@@ -225,7 +224,6 @@ function addTime() {
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
-        "verification": verification,
         "time": cur_time,
         "end": mod_epoch_end_time,
         "duration": mod_seconds,

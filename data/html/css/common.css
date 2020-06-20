@@ -15,7 +15,7 @@
 }
 
 /* Change the color of links on hover */
-.topnav a:hover {
+.topnav a:not(#hostname-display):hover {
   background-color: #ddd;
   color: #121212;
 }

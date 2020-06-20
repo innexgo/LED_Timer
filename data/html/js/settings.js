@@ -47,7 +47,6 @@ async function handleCountdownButton(event) {
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
-        "verification": verification,
         "time": cur_time,
         "countdown_min": countdown_min,
         "countdown_sec": countdown_sec,
@@ -61,7 +60,7 @@ async function handleCountdownButton(event) {
             await sleep(1500);
             document.getElementById("confirm-countdown").style.visibility = "hidden";
         },
-        response => function () {
+        (response) => {
             if (response.status === 401) {
                 alert("Invalid password.")
                 window.location.replace("/login.html");
@@ -92,7 +91,6 @@ async function handleWarningButton(event) {
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
-        "verification": verification,
         "time": cur_time,
         "warn_hrs": warn_hrs,
         "warn_min": warn_min,
@@ -107,7 +105,7 @@ async function handleWarningButton(event) {
             await sleep(1500);
             document.getElementById("confirm-warn-time").style.visibility = "hidden";
         },
-        response => function () {
+        (response) => {
             if (response.status === 401) {
                 alert("Invalid password.")
                 window.location.replace("/login.html");
@@ -135,7 +133,6 @@ async function handleIdleButton(event) {
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
-        "verification": verification,
         "time": cur_time,
         "warn_hrs": warn_hrs,
         "warn_min": warn_min,
@@ -150,7 +147,7 @@ async function handleIdleButton(event) {
             // await sleep(1500);
             // document.getElementById("confirm-idle").style.visibility = "hidden";
         },
-        response => function () {
+        (response) => {
             if (response.status === 401) {
                 alert("Invalid password.")
                 window.location.replace("/login.html");
