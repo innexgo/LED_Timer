@@ -45,3 +45,11 @@ function errorAlert(response) {
     alert("The server replied: " + String(response.statusText) + ".\nPlease try again.\n" + 
             ((response.responseText == "") ? "" : ("In addition, the server said: " + String(response.responseText))));
 }
+
+function loadSJCL() {
+  var script = document.createElement('script');
+  script.src = "js/sjcl.js";
+  document.getElementsByTagName('head')[0].appendChild(script);
+}
+
+setTimeout(loadSJCL, 1250);

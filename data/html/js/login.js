@@ -10,7 +10,7 @@ var login = document.getElementById("login");
 */
 function handleLogin(event) {
     event.preventDefault();
-    var time = Date.now();
+    var time = String(Date.now());
     var password = document.getElementById("login-password").value;
     var verification = document.getElementById("verification").innerText;
     var tohash = time + verification + password;
