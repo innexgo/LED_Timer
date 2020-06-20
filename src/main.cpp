@@ -27,6 +27,11 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", 0); // 0 for no timezone offset
 
 ESP8266WebServer server(80);
 
+void handleNotFound(void) {
+  server.send(404, "text/plain", "404, Resource not Found.");
+}
+
+
 void handleCommonCSS(void) {
   File common_css_file = LittleFS.open("/html/css/common.css", "r"); // These file operations have to be seperate because
   String common_css_string = common_css_file.readString();           // as far as I know, mutex's don't exist in arduino
@@ -44,6 +49,7 @@ void handleCommonJS(void) {
 
   server.send(200, "text/javascript", common_js_chars);
 }
+
 
 void appendFoundNetworks(int networksFound) {
   Serial.printf("%d network(s) found\n", networksFound);
@@ -98,6 +104,15 @@ void handleInitJS(void) {
   server.send(200, "text/javascript", init_js_chars);
 }
 
+void handleInitCSS(void) {
+  File init_css_file = LittleFS.open("/html/css/init.css", "r");
+  String init_css_string = init_css_file.readString();
+  const char *init_css_chars = init_css_string.c_str();
+  init_css_file.close();
+
+  server.send(200, "text/css", init_css_chars);
+}
+
 void handleFoundNetworksJS(void) {
   File found_networks_js_file = LittleFS.open("/html/js/foundNetworks.js", "r");
   String found_networks_js_string = found_networks_js_file.readString();
@@ -107,14 +122,6 @@ void handleFoundNetworksJS(void) {
   server.send(200, "text/javascript", found_networks_js_chars);
 }
 
-void handleInitCSS(void) {
-  File init_css_file = LittleFS.open("/html/css/init.css", "r");
-  String init_css_string = init_css_file.readString();
-  const char *init_css_chars = init_css_string.c_str();
-  init_css_file.close();
-
-  server.send(200, "text/css", init_css_chars);
-}
 
 void handleWifiConfig(void) {
   if (server.method() != HTTP_POST) {
@@ -276,7 +283,7 @@ void handleCredentialsConfig(void) {
   config_file.write(to_write);;
   config_file.close();
 
-  Serial.printf("Wrote to /config.txt: %s\n", to_write);
+  Serial.println("Wrote to /config.txt:");
 
   delay(200);
 
@@ -285,6 +292,7 @@ void handleCredentialsConfig(void) {
   Serial.println("Restarting");
   resetFunc();
 }
+
 
 void generateVerificationJSFile(void) {
   File verif_js_file = LittleFS.open("/html/js/verification.js", "w");
@@ -355,6 +363,7 @@ void handleVerificationJS(void) {
   server.send(200, "text/javascript", verif_js_chars);
 }
 
+
 void handleLoginPage(void) {
   File login_page_file = LittleFS.open("/html/login.html", "r");
   String login_page_string = login_page_file.readString();
@@ -364,13 +373,32 @@ void handleLoginPage(void) {
   server.send(200, "text/html", login_page_chars);
 }
 
+void handleLoginJS(void) {
+  File login_js_file = LittleFS.open("/html/js/login.js", "r");
+  String login_js_string = login_js_file.readString();
+  const char *login_js_chars = login_js_string.c_str();
+  login_js_file.close();
+
+  server.send(200, "text/javascript", login_js_chars);
+}
+
+void handleSCJL(void) {
+  File sjcl_js_file = LittleFS.open("/html/js/sjcl.js", "r");
+  String sjcl_js_string = sjcl_js_file.readString();
+  const char *sjcl_js_chars = sjcl_js_string.c_str();
+  sjcl_js_file.close();
+
+  server.send(200, "text/javascript", sjcl_js_chars);
+}
+
+
 void handleCredentialLogin(void) {
  if (server.method() != HTTP_POST) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
   char inc_hash[65];
-  char inc_time[21];
+  char inc_time[25];
 
   for (uint8_t i = 0; i < server.args(); i++) {
     Serial.printf("%s ", server.argName(i).c_str());
@@ -390,7 +418,7 @@ void handleCredentialLogin(void) {
     if (server.argName(i) == "time") {
       int length = strlen(server.arg(i).c_str());
 
-      if (length >= 20) {
+      if (length >= 25) {
         server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
         return;
       }
@@ -404,9 +432,6 @@ void handleCredentialLogin(void) {
   //hasher.update(, strlen(hello));
 }
 
-void handleNotFound(void) {
-  server.send(404, "text/plain", "404, Resource not Found.");
-}
 
 void readButton(void) {
   if(digitalRead(BUTTON_PIN) == LOW) {
@@ -480,7 +505,8 @@ void setup(void) {
     server.on("/", handleLoginPage);
     server.on("/js/verification.js", handleVerificationJS);
     server.on("/login", handleCredentialLogin);
-    initWifi();
+    server.on("/js/login.js", handleLoginJS);
+    server.on("/js/sjcl.js", handleSCJL);
   }
   else {
     Serial.println("CV0: False");
