@@ -499,17 +499,13 @@ void handleCredentialLogin(void) {
 
   byte calc_hash[SHA256_SIZE];
   hasher.doFinal(calc_hash);
-  for (int i = 0; i < SHA256_SIZE; i++) {
-    Serial.print(calc_hash[i], HEX);
-  }
-  Serial.print("\n");
+
 
   //Code taken from Serial.print()
   char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
   char *hash_str = &buf[sizeof(buf) - 1];
 
   *hash_str = '\0';
-  
 
   // Code taken from Serial.print() and modified to work for my scenario.
   // Apparently the original doesn't fully work, probably edge case.
@@ -523,16 +519,13 @@ void handleCredentialLogin(void) {
     }
   }
 
-  char inc_hash[66]; // incoming hash
-  strcpy(inc_hash, (inc_hash_str.c_str()));
-  inc_hash[65] = '\0'; // NULL termination
 
-  Serial.printf("Incoming Hash:   %s\n", inc_hash);
+  Serial.printf("Incoming Hash:   %s\n", (inc_hash_str.c_str()));
   Serial.printf("Calculated Hash: %s\n", hash_str);
 
   ESP.wdtFeed(); // Before watchdog bites me.
 
-  if (strcmp(hash_str, inc_hash) == 0) {
+  if (strcmp(hash_str, (inc_hash_str.c_str())) == 0) {
     Serial.println("Password matches");
     server.send(200, "text/plain", "Password Good.");
     return;
