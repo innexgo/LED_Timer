@@ -148,14 +148,14 @@ function sendToTimer() {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + epoch_end_time + seconds + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
         "time": cur_time,
         "end": epoch_end_time,
         "duration": seconds,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
@@ -222,7 +222,7 @@ function addTime() {
     var verification = String(document.getElementById("verification").innerText);
     var password = String(sessionStorage.getItem("password"));
     var tohash = cur_time + mod_epoch_end_time + mod_seconds + subtle + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -230,7 +230,7 @@ function addTime() {
         "end": mod_epoch_end_time,
         "duration": mod_seconds,
         "subtle": subtle,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(

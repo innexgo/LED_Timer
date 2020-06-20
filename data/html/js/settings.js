@@ -44,7 +44,7 @@ async function handleCountdownButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + countdown_min + countdown_sec + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -52,7 +52,7 @@ async function handleCountdownButton(event) {
         "countdown_min": countdown_min,
         "countdown_sec": countdown_sec,
         "enabled": enabled,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = postData(data, "/countdown");
     xhrRequest.then(
@@ -89,7 +89,7 @@ async function handleWarningButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + warn_hrs + warn_min + warn_sec + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -98,7 +98,7 @@ async function handleWarningButton(event) {
         "warn_min": warn_min,
         "warn_sec": warn_sec,
         "enabled": enabled,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = postData(data, "/warn");
     xhrRequest.then(
@@ -132,7 +132,7 @@ async function handleIdleButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + idle_color + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -141,7 +141,7 @@ async function handleIdleButton(event) {
         "warn_min": warn_min,
         "warn_sec": warn_sec,
         "enabled": enabled,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = postData(data, "/idle");
     xhrRequest.then(

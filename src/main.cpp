@@ -427,6 +427,7 @@ void handleCredentialLogin(void) {
     }
   }
 
+  
   SHA256 hasher;
   byte hash[32];
   //hasher.update(, strlen(hello));

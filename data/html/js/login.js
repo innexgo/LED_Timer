@@ -14,11 +14,11 @@ function handleLogin(event) {
     var password = document.getElementById("login-password").value;
     var verification = document.getElementById("verification").innerText;
     var tohash = time + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
+    var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "time": time,
-        "hash": hashBits
+        "hash": hashBits.toUpperCase()
     };
     var xhrRequest = new postData(data, "/login");
     xhrRequest.then(response => function () {
