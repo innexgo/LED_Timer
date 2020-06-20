@@ -286,6 +286,18 @@ void handleCredentialsConfig(void) {
   resetFunc();
 }
 
+void generateVerificationJSFile(void) {
+  File verif_js_file = LittleFS.open("/html/js/verification.js", "w");
+  verif_js_file.write("var verif_div = document.getElementById('verification');\nverif_div.innerText = '");
+  File verif_file = LittleFS.open("/verif.txt", "r");
+  String verif_str = verif_file.readString();
+  const char *verif_chars = verif_str.c_str();
+  verif_js_file.write(verif_chars);
+  verif_file.close();
+  verif_js_file.write("';");
+  verif_js_file.close();
+}
+
 void generateVerification(void) {
   ESP8266TrueRandomClass random_gen;
 
@@ -311,12 +323,6 @@ void generateVerification(void) {
 
   *hash_str = '\0';
 
-  for (int i; i < SHA256_SIZE; i++) {
-    Serial.print(hash[i], HEX);
-  }
-  Serial.printf("\n");
-
-  // Needs to be the opposite way because of how arrays append.
   // Code taken from Serial.print() and modified to work for my scenario.
   // Apparently the original doesn't fully work, probably edge case.
   for (int i = (SHA256_SIZE-1); i >= 0; i--) {
@@ -330,11 +336,23 @@ void generateVerification(void) {
   }
   Serial.printf("%s\n", hash_str);
 
-  char hash_char_str[64];
+  char hash_char_str[65];
+  hash_char_str[65] = 0;
   strcpy(hash_char_str, hash_str);
   File verification_file = LittleFS.open("verif.txt", "w");
   verification_file.write((const char*)hash_char_str);
   verification_file.close();
+
+  generateVerificationJSFile();
+}
+
+void handleVerificationJS(void) {
+  File verif_js_file = LittleFS.open("/html/js/verification.js", "r");
+  String verif_js_string = verif_js_file.readString();
+  const char *verif_js_chars = verif_js_string.c_str();
+  verif_js_file.close();
+
+  server.send(200, "text/javascript", verif_js_chars);
 }
 
 void handleLoginPage(void) {
@@ -455,7 +473,12 @@ void setup(void) {
   // Check if init done.
   if (strcmp(config_values[0], true_ptr) == 0) {
     Serial.println("CV0: True");
+
+    Serial.println("Generating Verification Data");
+    generateVerification();
+
     server.on("/", handleLoginPage);
+    server.on("/js/verification.js", handleVerificationJS);
     server.on("/login", handleCredentialLogin);
     initWifi();
   }
@@ -465,12 +488,13 @@ void setup(void) {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     Serial.println("Scanning Networks");
-    delay(100);
+    delay(100); // Give it time to disconnect.
     WiFi.scanNetworksAsync(appendFoundNetworks, false);
     while (WiFi.scanComplete() == -1) {
       delay(250);
-      Serial.print(".");
+      Serial.print("."); // Wait for the scan to finish.
     }
+
     Serial.println("");
     server.on("/", handleInitPage);
     server.on("/init.html", handleInitPage);
@@ -496,8 +520,6 @@ void setup(void) {
   Serial.println("Starting WiFi");
   initWifi();
 
-  Serial.println("Generating Verification Data");
-  generateVerification();
 
   server.on("/js/common.js", handleCommonJS);
   server.on("/css/common.css", handleCommonCSS);
