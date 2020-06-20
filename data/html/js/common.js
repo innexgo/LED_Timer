@@ -1,6 +1,6 @@
-function revealPassword(field_id) {
+function revealPassword(element, field_id) {
   var x = document.getElementById(field_id);
-  if (x.type === "password") {
+  if (x.type === "password" && element.checked) {
     x.type = "text";
   } else {
     x.type = "password";

@@ -44,7 +44,7 @@ async function handleCountdownButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + countdown_min + countdown_sec + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash);
+    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -89,7 +89,7 @@ async function handleWarningButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + warn_hrs + warn_min + warn_sec + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash);
+    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,
@@ -132,7 +132,7 @@ async function handleIdleButton(event) {
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
     var tohash = cur_time + idle_color + enabled + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash);
+    var hash = sjcl.hash.sha256.hash(tohash).toUpperCase();
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "verification": verification,

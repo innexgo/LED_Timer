@@ -40,7 +40,7 @@
                     <legend>WPA2 Wifi</legend>
                     <label for="WPA2-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
                     <input type="password" id="WPA2-password" value="" placeholder="password" required>
-                    <input type="checkbox" onclick="revealPassword('WPA2-password')">Show Password<br>
+                    <input type="checkbox" onclick="revealPassword(this, 'WPA2-password')">Show Password<br>
                     <button type="submit">confirm</button>
                     <button type="reset">clear</button>
                 </fieldset>
@@ -53,7 +53,7 @@
                     <input type="text" id="WPA2-E-username" value="" placeholder="username" required><br>
                     <label for="WPA2-E-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
                     <input type="password" id="WPA2-E-password" value="" placeholder="password" required>
-                    <input type="checkbox" onclick="revealPassword('WPA2-E-password')">Show Password<br>
+                    <input type="checkbox" onclick="revealPassword(this, 'WPA2-E-password')">Show Password<br>
                     <button type="submit">confirm</button>
                     <button type="reset">clear</button>
                 </fieldset>
@@ -88,7 +88,7 @@
                         </label>
                         <input type="password" class="password" id="password" value="" placeholder="password"
                             minlength="6" required>
-                        <input type="checkbox" onclick="revealPassword('password')">Show Password<br><br>
+                        <input type="checkbox" onclick="revealPassword(this, 'password')">Show Password<br><br>
                         <h4>When you're done, restart device to use the given settings. </h4>
                         <p>By using, you agree to cookies, which are required for this product. <br>This timer may be
                             off by a few seconds under normal usage.<br>Extra lingo: If you mess

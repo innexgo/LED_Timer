@@ -5,6 +5,7 @@
     <Title>Login</Title>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="css/common.css">
+    <div id="verification" style="display: none"></div>
 </head>
 
 <body>
@@ -14,16 +15,14 @@
                 <legend>Login</legend>
                 <label for="login-password">Password: <abbr title="required" aria-label="required">*</abbr></label>
                 <input type="password" id="login-password" value="" placeholder="password" required>
-                <input type="checkbox" onclick="revealPassword('login-password')">Show Password<br><br>
+                <input type="checkbox" onclick="revealPassword(this, 'login-password')">Show Password<br><br>
                 <button type="submit" onclick="savePassword()">login</button>
             </fieldset>
         </form>
     </div>
 </body>
-
 <script src="js/common.js"></script>
 <script src="js/login.js"></script>
 <script src="js/sjcl.js"></script>
-
+<script src="js/verification.js"></script>
 </html>
-<div id="verification" style="display: none">
