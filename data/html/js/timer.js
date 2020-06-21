@@ -11,16 +11,17 @@ window.onload = function () {
     else {
         divOne.style.width = divOneWidth;
     }
-}
-
-if ((Math.floor((sessionStorage.getItem("epoch_time") - Date.now()) / 1000)) > 0) {
-    timer_enabled = true;
-}
-else {
-    timer_enabled = false;
+    
+    if ((Math.floor((sessionStorage.getItem("epoch_time") - Date.now()) / 1000)) > 0) {
+        timer_enabled = true;
+    }
+    else {
+        timer_enabled = false;
+    }
 }
 
 function setCountdown() {
+    timer_enabled = false;
     var hours = document.getElementById("timer-time-hrs").value;
     var minutes = document.getElementById("timer-time-min").value;
     var seconds = document.getElementById("timer-time-sec").value;
@@ -29,11 +30,8 @@ function setCountdown() {
     sessionStorage.setItem("time", time);
     end_time_epoch = String(Date.now() + time * 1000);
     sessionStorage.setItem("epoch_time", end_time_epoch);
-    timer_enabled = true;
 
     sendToTimer();
-
-    countdown();
 }
 
 function countdown() {
@@ -53,6 +51,8 @@ function countdown() {
         if (time <= 0) {
             timer_enabled = false;
             alert("Time's up");
+            sessionStorage.setItem("epoch_time", 0); // clear
+            document.getElementById('timeleft').innerText = ""; // clear
             expected = Date.now() // Prevents the clock from thinking it drifted off.
             return null;
         };
@@ -109,7 +109,10 @@ function validateTime() {
 };
 
 function validateTimeDiff() {
-    var end_time_epoch = sessionStorage.getItem("epoch_time");
+    var end_time_epoch = parseInt(sessionStorage.getItem("epoch_time"));
+    if (end_time_epoch == 0) {
+        return false;
+    }
     var time = Math.floor((end_time_epoch - Date.now()) / 1000)
     var rhours = Math.floor(time / 3600);
     var rminutes = Math.floor((time - (rhours * 3600)) / 60);
@@ -158,8 +161,17 @@ function sendToTimer() {
     };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
-        function () { },
-        response => function () {
+        function () {
+            // Update time again.
+            timer_enabled = true;
+            sessionStorage.setItem("time", time);
+            end_time_epoch = String(Date.now() + time * 1000);
+            sessionStorage.setItem("epoch_time", end_time_epoch);
+            countdown();
+        },
+        (response) => {
+            sessionStorage.setItem("epoch_time", 0); //clear
+            document.getElementById('timeleft').innerText = ""; // clear
             if (response.status === 401) {
                 alert("Invalid password.")
                 window.location.replace("/login.html");
@@ -193,7 +205,10 @@ function step() {
 
 function handleAddTime(event) {
     event.preventDefault();
-    addTime();
+    var epoch_end_time = parseInt(sessionStorage.getItem("epoch_time"));
+    if (epoch_end_time != 0) {
+        addTime();
+    }
 };
 
 var timerChange = document.getElementById("timer-change");
@@ -208,12 +223,10 @@ function addTime() {
 
     var epoch_end_time = parseInt(sessionStorage.getItem("epoch_time"));
     var mod_epoch_end_time = epoch_end_time + dtime * 1000;
-    sessionStorage.setItem("epoch_time", mod_epoch_end_time);
     mod_epoch_end_time = String(mod_epoch_end_time);
 
     var seconds = String(sessionStorage.getItem("time"));
     var mod_seconds = seconds + dtime;
-    sessionStorage.setItem("time", mod_seconds);
     mod_seconds = String(mod_seconds);
 
     var subtle = String(document.getElementById("subtle-change").checked)
@@ -232,8 +245,13 @@ function addTime() {
     };
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
-        function () { },
-        response => function () {
+        function () {
+            sessionStorage.setItem("epoch_time", mod_epoch_end_time);
+            sessionStorage.setItem("time", mod_seconds);
+        },
+        (response) => {
+            sessionStorage.setItem("epoch_time", 0); // clear
+            document.getElementById('timeleft').innerText = ""; // clear
             if (response.status === 401) {
                 alert("Invalid password.")
                 window.location.replace("/login.html");
@@ -243,3 +261,13 @@ function addTime() {
             }
         })
 };
+
+var setHostname = getHostname();
+setHostname.then(
+    (response) => {
+        document.getElementById("hostname-display").innerText = response.responseText;
+    },
+    function () {
+        errorAlert(response);
+    }
+)

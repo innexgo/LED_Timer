@@ -38,18 +38,20 @@ function removeIdleConfirm() {
 async function handleCountdownButton(event) {
     event.preventDefault();
     var cur_time = String(Date.now());
-    var countdown_min = String(document.getElementById("countdown-time-min"));
-    var countdown_sec = String(document.getElementById("countdown-time-sec"));
+    var countdown_min = parseInt(document.getElementById("countdown-time-min"));
+    var countdown_sec = parseInt(document.getElementById("countdown-time-sec"));
+
+    countdown_time = ((countdown_min*60)+countdown_sec);
+
     var enabled = String(document.getElementById("countdown-enable").checked)
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
-    var tohash = cur_time + countdown_min + countdown_sec + enabled + verification + password;
+    var tohash = cur_time + String(countdown_time) + enabled + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "time": cur_time,
-        "countdown_min": countdown_min,
-        "countdown_sec": countdown_sec,
+        "countdown_time": countdown_time,
         "enabled": enabled,
         "hash": hashBits.toUpperCase()
     };
@@ -81,20 +83,21 @@ countdown.addEventListener('submit', handleCountdownButton);
 async function handleWarningButton(event) {
     event.preventDefault();
     var cur_time = String(Date.now());
-    var warn_hrs = String(document.getElementById("warn-time-hrs"));
-    var warn_min = String(document.getElementById("warn-time-min"));
-    var warn_sec = String(document.getElementById("warn-time-sec"));
+    var warn_hrs = parseInt(document.getElementById("warn-time-hrs"));
+    var warn_min = parseInt(document.getElementById("warn-time-min"));
+    var warn_sec = parseInt(document.getElementById("warn-time-sec"));
+
+    var warn_time = ((warn_hrs*3600)+(warn_min*60)+warn_sec);
+
     var enabled = String(document.getElementById("warn-enable").checked);
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
-    var tohash = cur_time + warn_hrs + warn_min + warn_sec + enabled + verification + password;
+    var tohash = cur_time + String(warn_time) + enabled + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "time": cur_time,
-        "warn_hrs": warn_hrs,
-        "warn_min": warn_min,
-        "warn_sec": warn_sec,
+        "warn-time": warn_time,
         "enabled": enabled,
         "hash": hashBits.toUpperCase()
     };
@@ -125,7 +128,7 @@ warn.addEventListener('submit', handleWarningButton);
 async function handleIdleButton(event) {
     event.preventDefault();
     var cur_time = String(Date.now());
-    var warn_hrs = String(document.getElementById("idle-color"));
+    var idle_color = String(document.getElementById("idle-color"));
     var enabled = String(document.getElementById("idle-enable").checked);
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
@@ -134,9 +137,7 @@ async function handleIdleButton(event) {
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "time": cur_time,
-        "warn_hrs": warn_hrs,
-        "warn_min": warn_min,
-        "warn_sec": warn_sec,
+        "idle-color": idle_color,
         "enabled": enabled,
         "hash": hashBits.toUpperCase()
     };
@@ -160,3 +161,13 @@ async function handleIdleButton(event) {
 
 var idle = document.getElementById("idle-set");
 idle.addEventListener('submit', handleidleButton);
+
+var setHostname = getHostname();
+setHostname.then(
+    (response) => {
+        document.getElementById("hostname-display").innerText = response.responseText;
+    },
+    function () {
+        errorAlert(response);
+    }
+)

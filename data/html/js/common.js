@@ -46,10 +46,26 @@ function errorAlert(response) {
             ((response.responseText == "") ? "" : ("In addition, the server said: " + String(response.responseText))));
 }
 
-function loadSJCL() {
-  var script = document.createElement('script');
-  script.src = "js/sjcl.js";
-  document.getElementsByTagName('head')[0].appendChild(script);
+function getHostname() {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/hostname", true);
+    xhr.send("");
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({
+          response: xhr.response,
+          responseText: xhr.responseText,
+          status: xhr.status,
+          url: xhr.responseURL
+        });
+      } else {
+        reject({
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText
+        });
+      }
+    }
+  })
 }
-
-setTimeout(loadSJCL, 1250);

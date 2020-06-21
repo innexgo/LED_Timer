@@ -35,3 +35,11 @@ function handleLogin(event) {
 }
 
 login.addEventListener('submit', handleLogin);
+
+function loadSJCL() {
+  var script = document.createElement('script');
+  script.src = "js/sjcl.js";
+  document.getElementsByTagName('head')[0].appendChild(script);
+}
+
+setTimeout(loadSJCL, 750);

@@ -370,6 +370,15 @@ void handleVerificationJS(void) {
 }
 
 
+void handleHostname(void) {
+  File hostname_file = LittleFS.open("/wifi/hostname.txt", "r");
+  String hostname_string = hostname_file.readString();
+  const char *hostname_chars = hostname_string.c_str();
+  hostname_file.close();
+
+  server.send(200, "text/html", hostname_chars);
+}
+
 void handleLoginPage(void) {
   File login_page_file = LittleFS.open("/html/login.html", "r");
   String login_page_string = login_page_file.readString();
@@ -567,6 +576,9 @@ void handleSetTimer(void) {
   const char *inc_time_str; // keeping it as a string as well for easier processing later
   unsigned long end_time = 0;
   const char *end_time_str;
+  unsigned long duration_time = 0;
+  const char *duration_str;
+  String subtle;
 
   for (uint8_t i = 0; i < server.args(); i++) {
     Serial.printf("%s ", server.argName(i).c_str());
@@ -585,6 +597,17 @@ void handleSetTimer(void) {
       }
 
       inc_hash_str = server.arg(i);
+    }
+
+    if (server.argName(i) == "subtle") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (((strcmp((server.arg(i).c_str()), "true")) != 0) && ((strcmp((server.arg(i).c_str()), "false")) != 0)) {
+        server.send(400, "text/plain", "Invalid value for field: subtle");
+        return;
+      }
+
+      subtle = server.arg(i);
     }
     
     if (server.argName(i) == "time") {
@@ -638,6 +661,26 @@ void handleSetTimer(void) {
 
       end_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
     }
+
+    if (server.argName(i) == "duration") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      duration_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // No need to div by 1k, already done.
+      for (int pos = (length-1); pos >= 0; pos --) {
+        duration_time += (int)((((char)*(duration_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      duration_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
   }
 
   if (has_internet) {
@@ -648,6 +691,11 @@ void handleSetTimer(void) {
     // cast to normal long to allow for negatives
     if (((long)(sys_epoch_time - inc_time)) > 15) { 
       server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
       return;
     }
   }
@@ -662,6 +710,108 @@ void handleSetTimer(void) {
     return;
   }
 
+
+  SHA256 hasher;
+  
+  //An attempt to deallocate some memory first.
+  if (true) {
+    Serial.printf("Adding time:  %s\n", inc_time_str);
+    hasher.doUpdate(inc_time_str);
+
+    Serial.printf("Adding end_t: %s\n", end_time_str);
+    hasher.doUpdate(end_time_str);
+
+    Serial.printf("Adding dur_t: %s\n", duration_str);
+    hasher.doUpdate(duration_str);
+
+    if (strcmp((subtle.c_str()), "") != 0) {
+      Serial.printf("Adding subt: %s\n", (subtle.c_str()));
+      hasher.doUpdate((subtle.c_str()));
+    }
+
+    File verif_file = LittleFS.open("/verif.txt", "r");
+    String verif_str = verif_file.readString();
+    const char *verif_chars = verif_str.c_str();
+    verif_file.close();
+
+    Serial.printf("Adding verif: %s\n", verif_chars);
+    hasher.doUpdate(verif_chars);
+
+    File pass_file = LittleFS.open("/pass.txt", "r");
+    String pass_str = pass_file.readString();
+    const char *pass_chars = pass_str.c_str();
+    pass_file.close();
+
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    hasher.doUpdate(pass_chars);
+  }
+
+  byte calc_hash[SHA256_SIZE];
+  hasher.doFinal(calc_hash);
+
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)calc_hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+
+
+  Serial.printf("Incoming Hash:   %s\n", (inc_hash_str.c_str()));
+  Serial.printf("Calculated Hash: %s\n", hash_str);
+
+  ESP.wdtFeed(); // Before watchdog bites me.
+
+  if (strcmp(hash_str, (inc_hash_str.c_str())) == 0) {
+    Serial.println("Password matches");
+    server.send(200, "text/plain", "Password Good.");
+    return;
+  }
+  else {
+    Serial.println("Password do not match");
+    server.send(401, "text/plain", "Wrong password.");
+    return;
+  }
+
+  if (duration_time == 25) {
+    server.send(400, "text/plain", "aight, fail test value.");
+  }
+  server.send(200, "text/plain", "test test, have fun.");
+}
+
+
+void handleSettingsPage(void) {
+  File settings_page_file = LittleFS.open("/html/settings.html", "r");
+  String settings_page_string = settings_page_file.readString();
+  const char *settings_page_chars = settings_page_string.c_str();
+  settings_page_file.close();
+
+  server.send(200, "text/html", settings_page_chars);
+}
+
+void handleSettingsJS(void) {
+  File settings_js_file = LittleFS.open("/html/js/settings.js", "r");
+  String settings_js_string = settings_js_file.readString();
+  const char *settings_js_chars = settings_js_string.c_str();
+  settings_js_file.close();
+
+  server.send(200, "text/javascript", settings_js_chars);
+}
+
+
+void handleSetSettings(void) {
 
 }
 
@@ -746,6 +896,10 @@ void setup(void) {
     server.on("/timer.html", handleTimerPage);
     server.on("/js/timer.js", handleTimerJS);
     server.on("/timer", handleSetTimer);
+    server.on("/settings.html", handleSettingsPage);
+    server.on("/js/settings.js", handleSettingsJS);
+    //server.on("/getsettings", handleSendSettings);
+    server.on("/hostname", handleHostname);
   }
   else {
     Serial.println("CV0: False");
