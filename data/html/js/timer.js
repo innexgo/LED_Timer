@@ -2,14 +2,14 @@ window.onload = function () {
     var divOne = document.getElementById("timer");
     var divTwo = document.getElementById("timer-change");
 
-    var divOneWidth = divOne.offsetWidth + "px";
-    var divTwoWidth = divTwo.offsetWidth + "px";
+    var divOneWidth = divOne.offsetWidth;
+    var divTwoWidth = divTwo.offsetWidth;
 
     if (divTwoWidth > divOneWidth) {
-        divOne.style.width = divTwoWidth;
+        divOne.style.width = (divTwoWidth + "px");
     }
     else {
-        divOne.style.width = divOneWidth;
+        divTwo.style.width = (divOneWidth + "px");
     }
     
     if ((Math.floor((sessionStorage.getItem("epoch_time") - Date.now()) / 1000)) > 0) {
@@ -262,10 +262,23 @@ function addTime() {
         })
 };
 
-var setHostname = getHostname();
+var setHostname = getData("/hostname");
 setHostname.then(
     (response) => {
         document.getElementById("hostname-display").innerText = response.responseText;
+    },
+    function () {
+        errorAlert(response);
+    }
+)
+
+var getSettedTime = getData("/gettimer");
+getSettedTime.then(
+    (response) => {
+        if ((parseInt(response.responseText)) > 5) {
+            sessionStorage.setItem("epoch_time", response.responseText);
+            countdown();
+        }
     },
     function () {
         errorAlert(response);

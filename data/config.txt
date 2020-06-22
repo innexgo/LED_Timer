@@ -1,1 +1,1 @@
-True, True, dd0099
+true true dd0099

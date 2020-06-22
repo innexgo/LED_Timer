@@ -15,21 +15,28 @@
         <a id="hostname-display" style="float: right;">Hostname</a>
     </nav>
     <div style="margin-top: 2rem;">
-        <form class="center" id="countdown-set" style="text-align: right;" onchange="removeCountdownConfirm()">
+        <form class="center" id="norm-color-set" style="text-align: right;" onchange="removeNormColorConfirm()">
             <fieldset>
-                <legend>
-                    <abbr title="Countdown timer before the real clock starts.">Countdown</abbr>
-                </legend>
-                <label for="countdown-set" style="float:left">Duration (min:sec):<abbr title="required"
-                    aria-label="required">*
-                </abbr></label>
-                
-                <input type="number" id="countdown-time-min" min="0" max="59" value="0" placeholder="0" required>:
-                <input type="number" id="countdown-time-sec" min="0" max="59" value="0" placeholder="0" required>
-                
-                <input type="checkbox" id="countdown-enable">Enabled
+                <legend><abbr title="How the LED strip behaves when not in use. Default: 33bb22">Normal Operation Color</abbr></legend>
+                <label for="norm-color-change"  style="float:left"><abbr
+                    title="Normal Operation color">RGB Hex Code</abbr>:<abbr
+                    title="required" aria-label="required">* </abbr>
+                </label>
+                <input type="text" id="norm-color" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required>
                 <button type="submit">Submit</button>
-                <div class="confirm-text" id="confirm-countdown" style="visibility: hidden;">&ensp; Confirmed</div>
+                <div class="confirm-text" id="confirm-norm-color" style="visibility: hidden;">&ensp; Confirmed</div>
+            </fieldset>
+        </form>
+        <form class="center" id="warn-color-set" style="text-align: right;" onchange="removeWarnColorConfirm()">
+            <fieldset>
+                <legend><abbr title="How the LED strip behaves when not in use. Default: 880000">Warning Color</abbr></legend>
+                <label for="warn-color-change"  style="float:left"><abbr
+                    title="Warning color">RGB Hex Code</abbr>:<abbr
+                    title="required" aria-label="required">* </abbr>
+                </label>
+                <input type="text" id="warn-color" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required>
+                <button type="submit">Submit</button>
+                <div class="confirm-text" id="confirm-warn-color" style="visibility: hidden;">&ensp; Confirmed</div>
             </fieldset>
         </form>
         <form class="center" id="warn-time-set" style="text-align: right;" onchange="removeWarningConfirm()">

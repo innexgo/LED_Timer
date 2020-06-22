@@ -46,10 +46,10 @@ function errorAlert(response) {
             ((response.responseText == "") ? "" : ("In addition, the server said: " + String(response.responseText))));
 }
 
-function getHostname() {
+function getData(url) {
   return new Promise(function (resolve, reject) {
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/hostname", true);
+    xhr.open("GET", url, true);
     xhr.send("");
     xhr.onload = function() {
       if (xhr.status >= 200 && xhr.status < 300) {

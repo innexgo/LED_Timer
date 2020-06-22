@@ -25,6 +25,8 @@
 #define NTP_OFFSET   0            // In seconds
 #define NTP_INTERVAL 60 * 1000    // In miliseconds
 
+CRGB leds[NUM_LEDS];
+
 String default_color = "686868";
 boolean has_internet = false;
 
@@ -32,6 +34,51 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", NTP_OFFSET, NTP_INTERVAL);
 
 ESP8266WebServer server(80);
+
+void changeIdle(void) {
+  File config_file = LittleFS.open("/config.txt", "r");
+  int config_size = config_file.size();
+
+  char config_chars[config_size + 1];
+  byte size = config_file.readBytes(config_chars, config_size);
+
+  config_file.close();
+
+  config_chars[size] = 0;
+
+  char *delimiters = " ,.-";
+
+  char *pch = strtok(config_chars , delimiters);
+
+  char *config_values[3];
+
+  /* Config values:
+  // 0: Init 
+  // 1: Idle behavior
+  // 2: Idle color
+  */
+
+  int pos = 0;
+
+  while (pch != NULL) {
+    config_values[pos] = pch;
+    pos++;
+    pch = strtok (0, delimiters);
+  }
+
+  // Set Default Idle color.
+  if (strcmp(config_values[1], "true") == 0) {
+    Serial.println("Idle Color: True");
+    int color = std::strtol(config_values[2], 0, 16);
+    fill_solid(leds, 60, CRGB(color));
+    FastLED.show();
+  }
+  else {
+    Serial.println("Idle Color: False");
+    fill_solid(leds, 60, CRGB(0));
+    FastLED.show();
+  }
+}
 
 void handleNotFound(void) {
   server.send(404, "text/plain", "404, Resource not Found.");
@@ -289,7 +336,7 @@ void handleCredentialsConfig(void) {
 
   File config_file = LittleFS.open("/config.txt", "w");
   const char *to_write = default_color.c_str();
-  config_file.write("True, True, ");
+  config_file.write("true true ");
   config_file.write(to_write);;
   config_file.close();
 
@@ -410,7 +457,7 @@ void handleCredentialLogin(void) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
-  String inc_hash_str;
+  const char *inc_hash_str;
   unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
   const char *inc_time_str; // keeping it as a string as well for easier processing later
 
@@ -430,7 +477,7 @@ void handleCredentialLogin(void) {
         return;
       }
 
-      inc_hash_str = server.arg(i);
+      inc_hash_str = server.arg(i).c_str();
     }
     
     if (server.argName(i) == "time") {
@@ -470,6 +517,11 @@ void handleCredentialLogin(void) {
       server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
       return;
     }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
+      return;
+    }
   }
 
   if (inc_time == 0) {
@@ -477,7 +529,7 @@ void handleCredentialLogin(void) {
     return;
   }
 
-  if (strcmp((inc_hash_str.c_str()), "") == 0) {
+  if (strcmp(inc_hash_str, "") == 0) {
     server.send(400, "text/plain", "Stop the fake requests.");
     return;
   }
@@ -529,12 +581,12 @@ void handleCredentialLogin(void) {
   }
 
 
-  Serial.printf("Incoming Hash:   %s\n", (inc_hash_str.c_str()));
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
   Serial.printf("Calculated Hash: %s\n", hash_str);
 
   ESP.wdtFeed(); // Before watchdog bites me.
 
-  if (strcmp(hash_str, (inc_hash_str.c_str())) == 0) {
+  if (strcmp(hash_str, inc_hash_str) == 0) {
     Serial.println("Password matches");
     server.send(200, "text/plain", "Password Good.");
     return;
@@ -544,6 +596,16 @@ void handleCredentialLogin(void) {
     server.send(401, "text/plain", "Wrong password.");
     return;
   }
+}
+
+
+void handleGetTimer(void) {
+  File end_time_file = LittleFS.open("/timer/end_time.txt", "r");
+  String end_time_string = end_time_file.readString();
+  const char *end_time_chars = end_time_string.c_str();
+  end_time_file.close();
+
+  server.send(200, "text/html", end_time_chars);
 }
 
 
@@ -571,14 +633,14 @@ void handleSetTimer(void) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 
-  String inc_hash_str;
+  const char *inc_hash_str;
   unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
   const char *inc_time_str; // keeping it as a string as well for easier processing later
   unsigned long end_time = 0;
   const char *end_time_str;
   unsigned long duration_time = 0;
   const char *duration_str;
-  String subtle;
+  const char *subtle = "";
 
   for (uint8_t i = 0; i < server.args(); i++) {
     Serial.printf("%s ", server.argName(i).c_str());
@@ -596,18 +658,16 @@ void handleSetTimer(void) {
         return;
       }
 
-      inc_hash_str = server.arg(i);
+      inc_hash_str = (server.arg(i).c_str());
     }
 
     if (server.argName(i) == "subtle") {
-      int length = strlen(server.arg(i).c_str());
-
       if (((strcmp((server.arg(i).c_str()), "true")) != 0) && ((strcmp((server.arg(i).c_str()), "false")) != 0)) {
         server.send(400, "text/plain", "Invalid value for field: subtle");
         return;
       }
 
-      subtle = server.arg(i);
+      subtle = (server.arg(i).c_str());
     }
     
     if (server.argName(i) == "time") {
@@ -669,7 +729,7 @@ void handleSetTimer(void) {
         server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
         return;
       }
-
+      
       duration_str = (server.arg(i).c_str());
       
       // Because the normal functions failed me for over 5 hours, I am forced to do this.
@@ -677,6 +737,11 @@ void handleSetTimer(void) {
       // No need to div by 1k, already done.
       for (int pos = (length-1); pos >= 0; pos --) {
         duration_time += (int)((((char)*(duration_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      if (duration_time < 5) {
+        server.send(400, "text/plain", "Bad request.");
+        return;
       }
 
       duration_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
@@ -700,16 +765,6 @@ void handleSetTimer(void) {
     }
   }
 
-  if (inc_time == 0) {
-    server.send(400, "text/plain", "Stop the fake requests.");
-    return;
-  }
-
-  if (strcmp((inc_hash_str.c_str()), "") == 0) {
-    server.send(400, "text/plain", "Stop the fake requests.");
-    return;
-  }
-
 
   SHA256 hasher;
   
@@ -724,9 +779,9 @@ void handleSetTimer(void) {
     Serial.printf("Adding dur_t: %s\n", duration_str);
     hasher.doUpdate(duration_str);
 
-    if (strcmp((subtle.c_str()), "") != 0) {
-      Serial.printf("Adding subt: %s\n", (subtle.c_str()));
-      hasher.doUpdate((subtle.c_str()));
+    if (strcmp(subtle, "") != 0) {
+      Serial.printf("Adding subt: %s\n", subtle);
+      hasher.doUpdate(subtle);
     }
 
     File verif_file = LittleFS.open("/verif.txt", "r");
@@ -769,26 +824,113 @@ void handleSetTimer(void) {
   }
 
 
-  Serial.printf("Incoming Hash:   %s\n", (inc_hash_str.c_str()));
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
   Serial.printf("Calculated Hash: %s\n", hash_str);
 
   ESP.wdtFeed(); // Before watchdog bites me.
 
-  if (strcmp(hash_str, (inc_hash_str.c_str())) == 0) {
+  if (strcmp(hash_str, inc_hash_str) == 0) {
     Serial.println("Password matches");
     server.send(200, "text/plain", "Password Good.");
-    return;
   }
   else {
     Serial.println("Password do not match");
     server.send(401, "text/plain", "Wrong password.");
     return;
   }
+  
+  if (strcmp(subtle, "") == 0) {
+    File duration_file = LittleFS.open("/timer/duration.txt", "w");
+    Serial.printf("Wrote to duration file: %s\n", duration_str);
+    duration_file.write(duration_str);
+    duration_file.close();
 
-  if (duration_time == 25) {
-    server.send(400, "text/plain", "aight, fail test value.");
+    File end_time_file = LittleFS.open("/timer/end_time.txt", "w");
+    Serial.printf("Wrote to end_time file: %s\n", end_time_str);
+    end_time_file.write(end_time_str);
+    end_time_file.close();
+
+    File add_time_file = LittleFS.open("/timer.add.txt", "w");
+    add_time_file.write("");
+    add_time_file.close();
   }
-  server.send(200, "text/plain", "test test, have fun.");
+  else {
+    String to_write = "";
+    to_write += subtle;
+    to_write += " ";
+    to_write += duration_str;
+    to_write += " ";
+    to_write += end_time_str;
+
+    const char *to_write_char = (to_write.c_str());
+    Serial.printf("Writing to add time file: %s\n", to_write_char);
+    File add_time_file = LittleFS.open("/timer/add.txt", "w");
+    add_time_file.write(to_write_char);
+    add_time_file.close();
+  }
+}
+
+
+void handleGetSettings(void) {
+  File config_file = LittleFS.open("/config.txt", "r");
+  int config_size = config_file.size();
+
+  char config_chars[config_size + 1];
+  byte size = config_file.readBytes(config_chars, config_size);
+
+  config_file.close();
+
+  config_chars[size] = 0;
+
+  char *delimiters = " ,.-";
+
+  char *pch = strtok(config_chars , delimiters);
+
+  char *config_values[3];
+
+  /* Config values:
+  // 0: Init 
+  // 1: Idle behavior
+  // 2: Idle color
+  */
+
+  int pos = 0;
+
+  while (pch != NULL) {
+    config_values[pos] = pch;
+    pos++;
+    pch = strtok (0, delimiters);
+  }
+
+  String send_string = "";
+  send_string += config_values[1];
+  send_string += " ";
+  send_string += config_values[2];
+
+  File warning_file = LittleFS.open("/timer/warn.txt", "r");
+  String warning_string = warning_file.readString();
+  warning_file.close();
+
+  send_string += " ";
+  send_string += warning_string;
+
+  File norm_color_file = LittleFS.open("/timer/norm_color.txt", "r");
+  String norm_color_string = norm_color_file.readString();
+  norm_color_file.close();
+
+  send_string += " ";
+  send_string += norm_color_string;
+
+  File warn_color_file = LittleFS.open("/timer/warn_color.txt", "r");
+  String warn_color_string = warn_color_file.readString();
+  warn_color_file.close();
+
+  send_string += " ";
+  send_string += warn_color_string;
+
+  const char* send_string_char = send_string.c_str();
+  Serial.printf("Settings: %s\n", send_string_char);
+  server.send(200, "text/html", send_string_char);
 }
 
 
@@ -811,10 +953,810 @@ void handleSettingsJS(void) {
 }
 
 
-void handleSetSettings(void) {
+void handleSetNormColor(void) {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
 
+  const char *inc_hash_str;
+  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
+  const char *inc_time_str; // keeping it as a string as well for easier processing later
+  const char *norm_color;
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length <= 63) {
+        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
+        return;
+      }
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_hash_str = (server.arg(i).c_str());
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // Perk is that it divides by 1000 by ignoring the last 3 positions.
+      for (int pos = (length-4); pos >= 0; pos --) {
+        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+
+    if (server.argName(i) == "norm-color") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length > 6) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      if (length < 6) {
+        server.send(400, "text/plain", "Color too short/not valid");
+        return;
+      }
+
+      norm_color = (server.arg(i).c_str());
+
+      regex_t color_pattern;
+      int ret_int;
+      char color[length+1];
+
+      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
+      if (ret_int) {
+        Serial.println("Could not compile regex");
+        return;
+      }
+
+      strcpy(color, server.arg(i).c_str());
+
+      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
+
+      regfree(&color_pattern);
+
+      if (!ret_int) {
+        Serial.println("color input valid");
+      }
+      else if (ret_int == REG_NOMATCH) {
+        Serial.println("Color input NOT valid");
+        server.send(400, "text/plain", "Invalid Idle Color");
+        return;
+      }
+      else {
+        Serial.print("Regex Failed at Color");
+        server.send(500, "text/plain", "Internal Server Error, Error 4");
+        return;
+      }
+      
+    }
+
+  }
+
+  if (has_internet) {
+    unsigned long sys_epoch_time =  timeClient.getEpochTime();
+
+    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
+    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
+    // cast to normal long to allow for negatives
+    if (((long)(sys_epoch_time - inc_time)) > 15) { 
+      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
+      return;
+    }
+  }
+
+  if (strcmp(inc_hash_str, "") == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+
+  SHA256 hasher;
+  
+  //An attempt to deallocate some memory first.
+  if (true) {
+    Serial.printf("Adding time:   %s\n", inc_time_str);
+    hasher.doUpdate(inc_time_str);
+
+    Serial.printf("Adding color: %s\n", norm_color);
+    hasher.doUpdate(norm_color);
+
+    File verif_file = LittleFS.open("/verif.txt", "r");
+    String verif_str = verif_file.readString();
+    const char *verif_chars = verif_str.c_str();
+    verif_file.close();
+
+    Serial.printf("Adding verif: %s\n", verif_chars);
+    hasher.doUpdate(verif_chars);
+
+    File pass_file = LittleFS.open("/pass.txt", "r");
+    String pass_str = pass_file.readString();
+    const char *pass_chars = pass_str.c_str();
+    pass_file.close();
+
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    hasher.doUpdate(pass_chars);
+  }
+
+  byte calc_hash[SHA256_SIZE];
+  hasher.doFinal(calc_hash);
+
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)calc_hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+
+
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
+  Serial.printf("Calculated Hash: %s\n", hash_str);
+
+  ESP.wdtFeed(); // Before watchdog bites me.
+
+  if (strcmp(hash_str, inc_hash_str) == 0) {
+    Serial.println("Password matches");
+    server.send(200, "text/plain", "Password Good.");
+  }
+  else {
+    Serial.println("Password do not match");
+    server.send(401, "text/plain", "Wrong password.");
+    return;
+  }
+
+  Serial.printf("Writing to norm color file: %s\n", norm_color);
+  File norm_color_file = LittleFS.open("/timer/norm_color.txt", "w");
+  norm_color_file.write(norm_color);
+  norm_color_file.close();
 }
 
+void handleSetWarnColor(void) {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
+
+  const char *inc_hash_str;
+  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
+  const char *inc_time_str; // keeping it as a string as well for easier processing later
+  const char *warn_color;
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length <= 63) {
+        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
+        return;
+      }
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_hash_str = (server.arg(i).c_str());
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // Perk is that it divides by 1000 by ignoring the last 3 positions.
+      for (int pos = (length-4); pos >= 0; pos --) {
+        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+
+    if (server.argName(i) == "warn-color") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length > 6) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      if (length < 6) {
+        server.send(400, "text/plain", "Color too short/not valid");
+        return;
+      }
+
+      warn_color = (server.arg(i).c_str());
+
+      regex_t color_pattern;
+      int ret_int;
+      char color[length+1];
+
+      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
+      if (ret_int) {
+        Serial.println("Could not compile regex");
+        return;
+      }
+
+      strcpy(color, server.arg(i).c_str());
+
+      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
+
+      regfree(&color_pattern);
+
+      if (!ret_int) {
+        Serial.println("color input valid");
+      }
+      else if (ret_int == REG_NOMATCH) {
+        Serial.println("Color input NOT valid");
+        server.send(400, "text/plain", "Invalid Idle Color");
+        return;
+      }
+      else {
+        Serial.print("Regex Failed at Color");
+        server.send(500, "text/plain", "Internal Server Error, Error 5");
+        return;
+      }
+      
+    }
+
+  }
+
+  if (has_internet) {
+    unsigned long sys_epoch_time =  timeClient.getEpochTime();
+
+    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
+    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
+    // cast to normal long to allow for negatives
+    if (((long)(sys_epoch_time - inc_time)) > 15) { 
+      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
+      return;
+    }
+  }
+
+  if (strcmp(inc_hash_str, "") == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+
+  SHA256 hasher;
+  
+  //An attempt to deallocate some memory first.
+  if (true) {
+    Serial.printf("Adding time:   %s\n", inc_time_str);
+    hasher.doUpdate(inc_time_str);
+
+    Serial.printf("Adding color: %s\n", warn_color);
+    hasher.doUpdate(warn_color);
+
+    File verif_file = LittleFS.open("/verif.txt", "r");
+    String verif_str = verif_file.readString();
+    const char *verif_chars = verif_str.c_str();
+    verif_file.close();
+
+    Serial.printf("Adding verif: %s\n", verif_chars);
+    hasher.doUpdate(verif_chars);
+
+    File pass_file = LittleFS.open("/pass.txt", "r");
+    String pass_str = pass_file.readString();
+    const char *pass_chars = pass_str.c_str();
+    pass_file.close();
+
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    hasher.doUpdate(pass_chars);
+  }
+
+  byte calc_hash[SHA256_SIZE];
+  hasher.doFinal(calc_hash);
+
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)calc_hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+
+
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
+  Serial.printf("Calculated Hash: %s\n", hash_str);
+
+  ESP.wdtFeed(); // Before watchdog bites me.
+
+  if (strcmp(hash_str, inc_hash_str) == 0) {
+    Serial.println("Password matches");
+    server.send(200, "text/plain", "Password Good.");
+  }
+  else {
+    Serial.println("Password do not match");
+    server.send(401, "text/plain", "Wrong password.");
+    return;
+  }
+
+  Serial.printf("Writing to add time file: %s\n", warn_color);
+  File warn_color_file = LittleFS.open("/timer/warn_color.txt", "w");
+  warn_color_file.write(warn_color);
+  warn_color_file.close();
+}
+
+void handleSetWarning(void) {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
+
+  const char *inc_hash_str;
+  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
+  const char *inc_time_str; // keeping it as a string as well for easier processing later
+  unsigned long warn_time = 0;
+  const char *warn_time_str;
+  const char *enabled;
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length <= 63) {
+        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
+        return;
+      }
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_hash_str = (server.arg(i).c_str());
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // Perk is that it divides by 1000 by ignoring the last 3 positions.
+      for (int pos = (length-4); pos >= 0; pos --) {
+        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+
+    if (server.argName(i) == "warn-time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      warn_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // No need to div by 1k, already done.
+      for (int pos = (length-1); pos >= 0; pos --) {
+        warn_time += (int)((((char)*(warn_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      warn_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+ 
+    if (server.argName(i) == "enabled") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (((strcmp((server.arg(i).c_str()), "true")) != 0) && ((strcmp((server.arg(i).c_str()), "false")) != 0)) {
+        server.send(400, "text/plain", "Invalid value for field: enabled");
+        return;
+      }
+
+      enabled = (server.arg(i).c_str());
+    }
+  }
+
+  if (has_internet) {
+    unsigned long sys_epoch_time =  timeClient.getEpochTime();
+
+    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
+    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
+    // cast to normal long to allow for negatives
+    if (((long)(sys_epoch_time - inc_time)) > 15) { 
+      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
+      return;
+    }
+  }
+
+
+  if (strcmp(inc_hash_str, "") == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+
+  SHA256 hasher;
+  
+  //An attempt to deallocate some memory first.
+  if (true) {
+    Serial.printf("Adding time:   %s\n", inc_time_str);
+    hasher.doUpdate(inc_time_str);
+
+    Serial.printf("Adding warn_t: %s\n", warn_time_str);
+    hasher.doUpdate(warn_time_str);
+
+    Serial.printf("Adding enb_d: %s\n", enabled);
+    hasher.doUpdate(enabled);
+
+    File verif_file = LittleFS.open("/verif.txt", "r");
+    String verif_str = verif_file.readString();
+    const char *verif_chars = verif_str.c_str();
+    verif_file.close();
+
+    Serial.printf("Adding verif: %s\n", verif_chars);
+    hasher.doUpdate(verif_chars);
+
+    File pass_file = LittleFS.open("/pass.txt", "r");
+    String pass_str = pass_file.readString();
+    const char *pass_chars = pass_str.c_str();
+    pass_file.close();
+
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    hasher.doUpdate(pass_chars);
+  }
+
+  byte calc_hash[SHA256_SIZE];
+  hasher.doFinal(calc_hash);
+
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)calc_hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+
+
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
+  Serial.printf("Calculated Hash: %s\n", hash_str);
+
+  ESP.wdtFeed(); // Before watchdog bites me.
+
+  if (strcmp(hash_str, inc_hash_str) == 0) {
+    Serial.println("Password matches");
+    server.send(200, "text/plain", "Password Good.");
+  }
+  else {
+    Serial.println("Password do not match");
+    server.send(401, "text/plain", "Wrong password.");
+    return;
+  }
+  
+  String to_write = "";
+  to_write += enabled;
+  to_write += " ";
+  to_write += warn_time_str;
+
+  const char *to_write_char = (to_write.c_str());
+  Serial.printf("Writing to warn time file: %s\n", to_write_char);
+  File warn_time_file = LittleFS.open("/timer/warn.txt", "w");
+  warn_time_file.write(to_write_char);
+  warn_time_file.close();
+}
+
+void handleSetIdle(void) {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
+
+  const char *inc_hash_str;
+  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
+  const char *inc_time_str; // keeping it as a string as well for easier processing later
+  const char *idle_color;
+  const char *enabled;
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("%s ", server.argName(i).c_str());
+    Serial.println(server.arg(i));;
+
+    if (server.argName(i) == "hash") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length <= 63) {
+        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
+        return;
+      }
+      if (length >= 65) {
+        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_hash_str = (server.arg(i).c_str());
+    }
+    
+    if (server.argName(i) == "time") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length < 10) {
+        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
+         Anyways, if you're from this decade, 2020's, stop the fake requests.");
+        return;
+      }
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      inc_time_str = (server.arg(i).c_str());
+      
+      // Because the normal functions failed me for over 5 hours, I am forced to do this.
+      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
+      // Perk is that it divides by 1000 by ignoring the last 3 positions.
+      for (int pos = (length-4); pos >= 0; pos --) {
+        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
+      }
+
+      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
+    }
+
+    if (server.argName(i) == "idle-color") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length >= 25) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      idle_color = (server.arg(i).c_str());
+
+      regex_t color_pattern;
+      int ret_int;
+      char color[length+1];
+
+      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
+      if (ret_int) {
+        Serial.println("Could not compile regex");
+        return;
+      }
+
+      strcpy(color, server.arg(i).c_str());
+
+      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
+
+      regfree(&color_pattern);
+
+      if (!ret_int) {
+        Serial.println("color input valid");
+      }
+      else if (ret_int == REG_NOMATCH) {
+        Serial.println("Color input NOT valid");
+        server.send(400, "text/plain", "Invalid Idle Color");
+        return;
+      }
+      else {
+        Serial.print("Regex Failed at Color");
+        server.send(500, "text/plain", "Internal Server Error, Error 3");
+        return;
+      }
+      
+    }
+ 
+    if (server.argName(i) == "enabled") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (((strcmp((server.arg(i).c_str()), "true")) != 0) && ((strcmp((server.arg(i).c_str()), "false")) != 0)) {
+        server.send(400, "text/plain", "Invalid value for field: enabled");
+        return;
+      }
+
+      enabled = (server.arg(i).c_str());
+    }
+  }
+
+  if (has_internet) {
+    unsigned long sys_epoch_time =  timeClient.getEpochTime();
+
+    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
+    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
+    // cast to normal long to allow for negatives
+    if (((long)(sys_epoch_time - inc_time)) > 15) { 
+      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
+      return;
+    }
+
+    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
+      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
+      return;
+    }
+  }
+
+
+  if (strcmp(inc_hash_str, "") == 0) {
+    server.send(400, "text/plain", "Stop the fake requests.");
+    return;
+  }
+
+
+  SHA256 hasher;
+  
+  //An attempt to deallocate some memory first.
+  if (true) {
+    Serial.printf("Adding time:   %s\n", inc_time_str);
+    hasher.doUpdate(inc_time_str);
+
+    Serial.printf("Adding color: %s\n", idle_color);
+    hasher.doUpdate(idle_color);
+
+    Serial.printf("Adding enb_d: %s\n", enabled);
+    hasher.doUpdate(enabled);
+
+    File verif_file = LittleFS.open("/verif.txt", "r");
+    String verif_str = verif_file.readString();
+    const char *verif_chars = verif_str.c_str();
+    verif_file.close();
+
+    Serial.printf("Adding verif: %s\n", verif_chars);
+    hasher.doUpdate(verif_chars);
+
+    File pass_file = LittleFS.open("/pass.txt", "r");
+    String pass_str = pass_file.readString();
+    const char *pass_chars = pass_str.c_str();
+    pass_file.close();
+
+    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    hasher.doUpdate(pass_chars);
+  }
+
+  byte calc_hash[SHA256_SIZE];
+  hasher.doFinal(calc_hash);
+
+
+  //Code taken from Serial.print()
+  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
+  char *hash_str = &buf[sizeof(buf) - 1];
+
+  *hash_str = '\0';
+
+  // Code taken from Serial.print() and modified to work for my scenario.
+  // Apparently the original doesn't fully work, probably edge case.
+  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
+    unsigned long hash_long = (unsigned long)calc_hash[i];
+    for (int j = 0; j <= 1; j++ ) {
+      unsigned long m = hash_long;
+      hash_long /= HEX;
+      char c = m - HEX * hash_long;
+      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
+    }
+  }
+
+
+  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
+  Serial.printf("Calculated Hash: %s\n", hash_str);
+
+  ESP.wdtFeed(); // Before watchdog bites me.
+
+  if (strcmp(hash_str, inc_hash_str) == 0) {
+    Serial.println("Password matches");
+    server.send(200, "text/plain", "Password Good.");
+  }
+  else {
+    Serial.println("Password do not match");
+    server.send(401, "text/plain", "Wrong password.");
+    return;
+  }
+  
+  String to_write = "true ";
+  to_write += enabled;
+  to_write += " ";
+  to_write += idle_color;
+
+  const char *to_write_char = (to_write.c_str());
+  Serial.printf("Writing to add time file: %s\n", to_write_char);
+  File config_file = LittleFS.open("/config.txt", "w");
+  config_file.write(to_write_char);
+  config_file.close();
+
+  changeIdle();
+}
 
 void readButton(void) {
   if(digitalRead(BUTTON_PIN) == LOW) {
@@ -828,7 +1770,7 @@ void readButton(void) {
     LittleFS.remove("/wifi/method.txt");
     File config_file = LittleFS.open("/config.txt", "w");
     const char *to_write = default_color.c_str();
-    config_file.write("True, True, ");
+    config_file.write("true true ");
     config_file.write(to_write);
     config_file.close();
 
@@ -845,7 +1787,6 @@ void setup(void) {
 
   pinMode(BUTTON_PIN, INPUT);
 
-  CRGB leds[NUM_LEDS];
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
 
   File config_file = LittleFS.open("/config.txt", "r");
@@ -878,7 +1819,7 @@ void setup(void) {
     pch = strtok (0, delimiters);
   }
   
-  char *true_ptr = "True";
+  char *true_ptr = "true";
 
   // Check if init done.
   if (strcmp(config_values[0], true_ptr) == 0) {
@@ -889,17 +1830,23 @@ void setup(void) {
     generateVerification();
 
     server.on("/", handleLoginPage);
+    server.on("/login.html", handleLoginPage);
     server.on("/js/verification.js", handleVerificationJS);
     server.on("/login", handleCredentialLogin);
     server.on("/js/login.js", handleLoginJS);
     server.on("/js/sjcl.js", handleSCJL);
+    server.on("/hostname", handleHostname);
     server.on("/timer.html", handleTimerPage);
+    server.on("/gettimer", handleGetTimer);
     server.on("/js/timer.js", handleTimerJS);
     server.on("/timer", handleSetTimer);
     server.on("/settings.html", handleSettingsPage);
     server.on("/js/settings.js", handleSettingsJS);
-    //server.on("/getsettings", handleSendSettings);
-    server.on("/hostname", handleHostname);
+    server.on("/getsettings", handleGetSettings);
+    server.on("/warn", handleSetWarning);
+    server.on("/idle", handleSetIdle);
+    server.on("/normcolor", handleSetNormColor);
+    server.on("/warncolor", handleSetWarnColor);
   }
   else {
     Serial.println("CV0: False");
@@ -924,17 +1871,7 @@ void setup(void) {
     server.on("/credentials", handleCredentialsConfig);
   }
 
-  // Set Default Idle color.
-  if (strcmp(config_values[1], true_ptr) == 0) {
-    Serial.println("CV1: True");
-    int color = std::strtol(config_values[2], 0, 16);
-    fill_solid(leds, 60, CRGB(color));
-    FastLED.show();
-  }
-  else {
-    Serial.println("CV1: False");
-    fill_solid(leds, 60, CRGB(0,0,0));
-  }
+  changeIdle();
 
   Serial.println("Starting WiFi");
   initWifi();
