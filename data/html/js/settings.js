@@ -1,3 +1,5 @@
+"use strict"
+
 window.onload = function () {
     var formOne = document.getElementById("warn-time-set");
     var formTwo = document.getElementById("idle-set");
@@ -7,14 +9,14 @@ window.onload = function () {
 
     if (formTwoWidth > formOneWidth) {
         formOne.style.width = (formTwoWidth + "px");
-        document.getElementById("warn-color-set").style.width = (formTwoWidth + "px");
-        document.getElementById("norm-color-set").style.width = (formTwoWidth + "px");
+        document.getElementById("op-colors-set").style.width = (formTwoWidth + "px");
     }
     else {
         formTwo.style.width = (formOneWidth + "px");
-        document.getElementById("warn-color-set").style.width = (formOneWidth + "px");
-        document.getElementById("norm-color-set").style.width = (formOneWidth + "px");
+        document.getElementById("op-colors-set").style.width = (formOneWidth + "px");
     }
+
+    document.getElementById("confirm-op-colors").style.width = ((parseInt(document.getElementById("confirm-warn-time").offsetWidth) - 2.666) + "px");
 }
 
 function sleep(ms) {
@@ -29,12 +31,8 @@ function removeIdleConfirm() {
     document.getElementById("confirm-idle").style.visibility = "hidden";
 }
 
-function removeNormColorConfirm() {
-    document.getElementById("confirm-normal-color").style.visibility = "hidden";
-}
-
-function removeWarnColorConfirm() {
-    document.getElementById("confirm-warn-color").style.visibility = "hidden";
+function removeOpColorsConfirm() {
+    document.getElementById("confirm-op-colors").style.visibility = "hidden";
 }
 
 /*
@@ -65,8 +63,6 @@ async function handleWarningButton(event) {
     xhrRequest.then(
         async function () {
             document.getElementById("confirm-warn-time").style.visibility = "visible";
-            await sleep(1500);
-            document.getElementById("confirm-warn-time").style.visibility = "hidden";
         },
         (response) => {
             if (response.status === 401) {
@@ -105,8 +101,6 @@ async function handleIdleButton(event) {
     xhrRequest.then(
         async function () {
             document.getElementById("confirm-idle").style.visibility = "visible";
-            // await sleep(1500);
-            // document.getElementById("confirm-idle").style.visibility = "hidden";
         },
         (response) => {
             if (response.status === 401) {
@@ -122,29 +116,43 @@ async function handleIdleButton(event) {
 var idle = document.getElementById("idle-set");
 idle.addEventListener('submit', handleIdleButton);
 
+function resetNormColor() {
+   document.getElementById("op-colors-norm").value = "33bb22";
+}
+
+function resetWarnColor() {
+    document.getElementById("op-colors-warn").value = "dddd11";
+}
+
+function resetStopColor() {
+    document.getElementById("op-colors-stop").value = "880000";
+}
+
 /*
 ** Prevents the page from reloading on button
 */
-async function handleNormColorButton(event) {
+async function handleOpColorsButton(event) {
     event.preventDefault();
     var cur_time = String(Date.now());
-    var norm_color = String(document.getElementById("norm-color").value);
+    var norm_color = String(document.getElementById("op-colors-norm").value);
+    var warn_color = String(document.getElementById("op-colors-warn").value);
+    var stop_color = String(document.getElementById("op-colors-stop").value);
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
-    var tohash = cur_time + norm_color + verification + password;
+    var tohash = cur_time + norm_color + warn_color + stop_color + verification + password;
     var hash = sjcl.hash.sha256.hash(tohash);
     var hashBits = sjcl.codec.hex.fromBits(hash);
     var data = {
         "time": cur_time,
         "norm-color": norm_color,
+        "warn-color": warn_color,
+        "stop-color": stop_color,
         "hash": hashBits.toUpperCase()
     };
-    var xhrRequest = postData(data, "/normcolor");
+    var xhrRequest = postData(data, "/opcolors");
     xhrRequest.then(
         async function () {
-            document.getElementById("confirm-norm-color").style.visibility = "visible";
-            // await sleep(1500);
-            // document.getElementById("confirm-idle").style.visibility = "hidden";
+            document.getElementById("confirm-op-colors").style.visibility = "visible";
         },
         (response) => {
             if (response.status === 401) {
@@ -157,44 +165,8 @@ async function handleNormColorButton(event) {
         })
 };
 
-var norm_color_set = document.getElementById("norm-color-set");
-norm_color_set.addEventListener('submit', handleNormColorButton);
-
-/*
-** Prevents the page from reloading on button
-*/
-async function handleWarnColorButton(event) {
-    event.preventDefault();
-    var cur_time = String(Date.now());
-    var warn_color = String(document.getElementById("warn-color").value);
-    var password = String(sessionStorage.getItem("password"));
-    var verification = String(document.getElementById("verification").innerText);
-    var tohash = cur_time + warn_color + verification + password;
-    var hash = sjcl.hash.sha256.hash(tohash);
-    var hashBits = sjcl.codec.hex.fromBits(hash);
-    var data = {
-        "time": cur_time,
-        "warn-color": warn_color,
-        "hash": hashBits.toUpperCase()
-    };
-    var xhrRequest = postData(data, "/warncolor");
-    xhrRequest.then(
-        async function () {
-            document.getElementById("confirm-warn-color").style.visibility = "visible";
-        },
-        (response) => {idle
-            if (response.status === 401) {
-                alert("Invalid password.")
-                window.location.replace("/login.html");
-            }
-            else {
-                alert("The server replied " + response.status + ". \n Please try again.");
-            }
-        })
-};
-
-var warn_color_set = document.getElementById("warn-color-set");
-warn_color_set.addEventListener('submit', handleWarnColorButton);
+var op_colors_set = document.getElementById("op-colors-set");
+op_colors_set.addEventListener('submit', handleOpColorsButton);
 
 var setHostname = getData("/hostname");
 setHostname.then(
@@ -226,8 +198,9 @@ getSettings.then(
         document.getElementById("warn-time-min").value = minutes;
         document.getElementById("warn-time-sec").value = seconds;
 
-        document.getElementById("norm-color").value = settings[4].padStart(6, "0");
-        document.getElementById("warn-color").value = settings[5].padStart(6, "0");
+        document.getElementById("op-colors-norm").value = settings[4].padStart(6, "0");
+        document.getElementById("op-colors-warn").value = settings[5].padStart(6, "0");
+        document.getElementById("op-colors-stop").value = settings[6].padStart(6, "0");
     },
     function () {
         errorAlert(response);

@@ -1,3 +1,5 @@
+"use strict"
+
 window.onload = function () {
     var divOne = document.getElementById("wifi-select-div");
     var divTwo = document.getElementById("credentials-div");

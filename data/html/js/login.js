@@ -1,3 +1,5 @@
+"use strict"
+
 function savePassword() {
     var password = document.getElementById("login-password").value;
     sessionStorage.setItem("password", password);

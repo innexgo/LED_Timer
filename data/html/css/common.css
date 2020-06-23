@@ -27,11 +27,19 @@
 }
 
 div .center {
-    margin: auto;
-    display:table;
+  margin: auto;
+  display:table;
 }
 
 .confirm-text {
-  display: inline;
+  display: inline-block;
   margin-right: 0.2rem;
+}
+
+table td {
+  text-align: center;
+}
+
+td:empty::after{
+  content: "\00a0";
 }

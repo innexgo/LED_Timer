@@ -15,28 +15,34 @@
         <a id="hostname-display" style="float: right;">Hostname</a>
     </nav>
     <div style="margin-top: 2rem;">
-        <form class="center" id="norm-color-set" style="text-align: right;" onchange="removeNormColorConfirm()">
+        <form class="center" id="op-colors-set" style="text-align: right;" onchange="removeOpColorsConfirm()">
             <fieldset>
-                <legend><abbr title="How the LED strip behaves when not in use. Default: 33bb22">Normal Operation Color</abbr></legend>
-                <label for="norm-color-change"  style="float:left"><abbr
-                    title="Normal Operation color">RGB Hex Code</abbr>:<abbr
-                    title="required" aria-label="required">* </abbr>
-                </label>
-                <input type="text" id="norm-color" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required>
-                <button type="submit">Submit</button>
-                <div class="confirm-text" id="confirm-norm-color" style="visibility: hidden;">&ensp; Confirmed</div>
-            </fieldset>
-        </form>
-        <form class="center" id="warn-color-set" style="text-align: right;" onchange="removeWarnColorConfirm()">
-            <fieldset>
-                <legend><abbr title="How the LED strip behaves when not in use. Default: 880000">Warning Color</abbr></legend>
-                <label for="warn-color-change"  style="float:left"><abbr
-                    title="Warning color">RGB Hex Code</abbr>:<abbr
-                    title="required" aria-label="required">* </abbr>
-                </label>
-                <input type="text" id="warn-color" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required>
-                <button type="submit">Submit</button>
-                <div class="confirm-text" id="confirm-warn-color" style="visibility: hidden;">&ensp; Confirmed</div>
+                <legend><abbr title="How the LED strip behaves in use.">Operational Colors</abbr></legend>
+                <table style="display:inline; float:left;">
+                    <tr>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td style="float:left"><label for="op-colors-change" ><abbr
+                            title="Operating colors">RGB Hex Code</abbr>:<abbr
+                            title="required" aria-label="required">* </abbr>
+                        </label></td>
+                    </tr>
+                </table>
+                <table style="display: inline; float:right">
+                    <tr>
+                        <td><abbr ondblclick="resetNormColor()" title="Default: 33bb22">Normal Color</abbr></td>
+                        <td><abbr ondblclick="resetWarnColor()" title="Default: dddd11">Warning Color</abbr></td>
+                        <td><abbr ondblclick="resetStopColor()" title="Default: 880000">Stop Color</abbr></td>
+                    </tr>
+                    <tr>
+                        <td><input type="text" id="op-colors-norm" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required></td>
+                        <td><input type="text" id="op-colors-warn" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required></td>
+                        <td><input type="text" id="op-colors-stop" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required></td>
+                        <td><button type="submit">Submit</button></td>
+                        <td><div class="confirm-text" id="confirm-op-colors" style="visibility: hidden; text-align:right">Confirmed</div></td>
+                    </tr>
+                </table>
             </fieldset>
         </form>
         <form class="center" id="warn-time-set" style="text-align: right;" onchange="removeWarningConfirm()">
@@ -56,9 +62,9 @@
         </form>
         <form class="center" id="idle-set" style="text-align: right;" onchange="removeIdleConfirm()">
             <fieldset>
-                <legend><abbr title="How the LED strip behaves when not in use.">Idle Behavior</abbr></legend>
+                <legend><abbr title="How the LED strip behaves when not in use. Default: 686868, Enabled.">Idle Behavior</abbr></legend>
                 <label for="idle-change"  style="float:left"><abbr
-                    title="Idle color">RGB Hex Code</abbr>:<abbr
+                    title="Idle Color, Default: 686868">RGB Hex Code</abbr>:<abbr
                     title="required" aria-label="required">* </abbr>
                 </label>
                 <input type="text" id="idle-color" min="0" value="0" placeholder="0" pattern="^[0-9A-Fa-f]{6}$" required>

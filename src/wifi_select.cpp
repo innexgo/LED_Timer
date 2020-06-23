@@ -189,4 +189,6 @@ void initWifi(void) {
   }
   Serial.println();
   Serial.println("WiFi Started");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
 }

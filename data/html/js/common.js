@@ -1,3 +1,5 @@
+"use strict"
+
 function revealPassword(element, field_id) {
   var x = document.getElementById(field_id);
   if (x.type === "password" && element.checked) {

@@ -1,3 +1,5 @@
+"use strict"
+
 window.onload = function () {
     var divOne = document.getElementById("timer");
     var divTwo = document.getElementById("timer-change");

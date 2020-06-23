@@ -928,6 +928,13 @@ void handleGetSettings(void) {
   send_string += " ";
   send_string += warn_color_string;
 
+  File stop_color_file = LittleFS.open("/timer/stop_color.txt", "r");
+  String stop_color_string = stop_color_file.readString();
+  stop_color_file.close();
+
+  send_string += " ";
+  send_string += stop_color_string;
+
   const char* send_string_char = send_string.c_str();
   Serial.printf("Settings: %s\n", send_string_char);
   server.send(200, "text/html", send_string_char);
@@ -953,7 +960,7 @@ void handleSettingsJS(void) {
 }
 
 
-void handleSetNormColor(void) {
+void handleSetOpColors(void) {
   if (server.method() != HTTP_POST) {
     server.send(405, "text/plain", "Method Not Allowed");
   }
@@ -962,6 +969,8 @@ void handleSetNormColor(void) {
   unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
   const char *inc_time_str; // keeping it as a string as well for easier processing later
   const char *norm_color;
+  const char *warn_color;
+  const char *stop_color;
 
   for (uint8_t i = 0; i < server.args(); i++) {
     Serial.printf("%s ", server.argName(i).c_str());
@@ -1044,15 +1053,106 @@ void handleSetNormColor(void) {
       }
       else if (ret_int == REG_NOMATCH) {
         Serial.println("Color input NOT valid");
-        server.send(400, "text/plain", "Invalid Idle Color");
+        server.send(400, "text/plain", "Invalid Normal Operating Color");
         return;
       }
       else {
         Serial.print("Regex Failed at Color");
-        server.send(500, "text/plain", "Internal Server Error, Error 4");
+        server.send(500, "text/plain", "Internal Server Error, Error 6");
         return;
       }
-      
+    }
+
+    if (server.argName(i) == "warn-color") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length > 6) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      if (length < 6) {
+        server.send(400, "text/plain", "Color too short/not valid");
+        return;
+      }
+
+      warn_color = (server.arg(i).c_str());
+
+      regex_t color_pattern;
+      int ret_int;
+      char color[length+1];
+
+      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
+      if (ret_int) {
+        Serial.println("Could not compile regex");
+        return;
+      }
+
+      strcpy(color, server.arg(i).c_str());
+
+      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
+
+      regfree(&color_pattern);
+
+      if (!ret_int) {
+        Serial.println("color input valid");
+      }
+      else if (ret_int == REG_NOMATCH) {
+        Serial.println("Color input NOT valid");
+        server.send(400, "text/plain", "Invalid Warning Color");
+        return;
+      }
+      else {
+        Serial.print("Regex Failed at Color");
+        server.send(500, "text/plain", "Internal Server Error, Error 6");
+        return;
+      }
+    }
+
+    if (server.argName(i) == "stop-color") {
+      int length = strlen(server.arg(i).c_str());
+
+      if (length > 6) {
+        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
+        return;
+      }
+
+      if (length < 6) {
+        server.send(400, "text/plain", "Color too short/not valid");
+        return;
+      }
+
+      stop_color = (server.arg(i).c_str());
+
+      regex_t color_pattern;
+      int ret_int;
+      char color[length+1];
+
+      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
+      if (ret_int) {
+        Serial.println("Could not compile regex");
+        return;
+      }
+
+      strcpy(color, server.arg(i).c_str());
+
+      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
+
+      regfree(&color_pattern);
+
+      if (!ret_int) {
+        Serial.println("color input valid");
+      }
+      else if (ret_int == REG_NOMATCH) {
+        Serial.println("Color input NOT valid");
+        server.send(400, "text/plain", "Invalid Stop Color");
+        return;
+      }
+      else {
+        Serial.print("Regex Failed at Color");
+        server.send(500, "text/plain", "Internal Server Error, Error 7");
+        return;
+      }
     }
 
   }
@@ -1084,18 +1184,24 @@ void handleSetNormColor(void) {
   
   //An attempt to deallocate some memory first.
   if (true) {
-    Serial.printf("Adding time:   %s\n", inc_time_str);
+    Serial.printf("Adding cur time:   %s\n", inc_time_str);
     hasher.doUpdate(inc_time_str);
 
-    Serial.printf("Adding color: %s\n", norm_color);
+    Serial.printf("Adding norm color: %s\n", norm_color);
     hasher.doUpdate(norm_color);
+
+    Serial.printf("Adding warn color: %s\n", warn_color);
+    hasher.doUpdate(warn_color);
+
+    Serial.printf("Adding stop color: %s\n", stop_color);
+    hasher.doUpdate(stop_color);
 
     File verif_file = LittleFS.open("/verif.txt", "r");
     String verif_str = verif_file.readString();
     const char *verif_chars = verif_str.c_str();
     verif_file.close();
 
-    Serial.printf("Adding verif: %s\n", verif_chars);
+    Serial.printf("Adding verif str:  %s\n", verif_chars);
     hasher.doUpdate(verif_chars);
 
     File pass_file = LittleFS.open("/pass.txt", "r");
@@ -1103,7 +1209,7 @@ void handleSetNormColor(void) {
     const char *pass_chars = pass_str.c_str();
     pass_file.close();
 
-    Serial.println("Adding pass"); //  %s\n", pass_chars);
+    Serial.println("Adding password"); //  %s\n", pass_chars);
     hasher.doUpdate(pass_chars);
   }
 
@@ -1149,204 +1255,16 @@ void handleSetNormColor(void) {
   File norm_color_file = LittleFS.open("/timer/norm_color.txt", "w");
   norm_color_file.write(norm_color);
   norm_color_file.close();
-}
 
-void handleSetWarnColor(void) {
-  if (server.method() != HTTP_POST) {
-    server.send(405, "text/plain", "Method Not Allowed");
-  }
-
-  const char *inc_hash_str;
-  unsigned long inc_time = 0; // incoming time, should work for the next few hundred years.
-  const char *inc_time_str; // keeping it as a string as well for easier processing later
-  const char *warn_color;
-
-  for (uint8_t i = 0; i < server.args(); i++) {
-    Serial.printf("%s ", server.argName(i).c_str());
-    Serial.println(server.arg(i));;
-
-    if (server.argName(i) == "hash") {
-      int length = strlen(server.arg(i).c_str());
-
-      if (length <= 63) {
-        server.send(400, "text/plain", "Hash way too short. Stop sending fake requests.");
-        return;
-      }
-      if (length >= 65) {
-        server.send(400, "text/plain", "Hash way too long. Stop sending fake requests.");
-        return;
-      }
-
-      inc_hash_str = (server.arg(i).c_str());
-    }
-    
-    if (server.argName(i) == "time") {
-      int length = strlen(server.arg(i).c_str());
-
-      if (length < 10) {
-        server.send(400, "text/plain", "You're in the future, how is it there? What's the new protocol used?\
-         Anyways, if you're from this decade, 2020's, stop the fake requests.");
-        return;
-      }
-
-      if (length >= 25) {
-        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
-        return;
-      }
-
-      inc_time_str = (server.arg(i).c_str());
-      
-      // Because the normal functions failed me for over 5 hours, I am forced to do this.
-      // Loads of ASCII casting pointing converting black magic concieved at 6 am after an allnighter.
-      // Perk is that it divides by 1000 by ignoring the last 3 positions.
-      for (int pos = (length-4); pos >= 0; pos --) {
-        inc_time += (int)((((char)*(inc_time_str++)) - '0') * ((int)pow(10, pos)));
-      }
-
-      inc_time_str = (server.arg(i).c_str()); // Need to replace the pointer b/c of previous operation moving it, at least if my understanding is sound.
-    }
-
-    if (server.argName(i) == "warn-color") {
-      int length = strlen(server.arg(i).c_str());
-
-      if (length > 6) {
-        server.send(400, "text/plain", "Time way too long. Stop sending fake requests.");
-        return;
-      }
-
-      if (length < 6) {
-        server.send(400, "text/plain", "Color too short/not valid");
-        return;
-      }
-
-      warn_color = (server.arg(i).c_str());
-
-      regex_t color_pattern;
-      int ret_int;
-      char color[length+1];
-
-      ret_int = regcomp(&color_pattern, "^([0-9A-Za-z]{6})$", REG_EXTENDED);
-      if (ret_int) {
-        Serial.println("Could not compile regex");
-        return;
-      }
-
-      strcpy(color, server.arg(i).c_str());
-
-      ret_int = regexec(&color_pattern, color, 0, NULL, 0);
-
-      regfree(&color_pattern);
-
-      if (!ret_int) {
-        Serial.println("color input valid");
-      }
-      else if (ret_int == REG_NOMATCH) {
-        Serial.println("Color input NOT valid");
-        server.send(400, "text/plain", "Invalid Idle Color");
-        return;
-      }
-      else {
-        Serial.print("Regex Failed at Color");
-        server.send(500, "text/plain", "Internal Server Error, Error 5");
-        return;
-      }
-      
-    }
-
-  }
-
-  if (has_internet) {
-    unsigned long sys_epoch_time =  timeClient.getEpochTime();
-
-    Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-    Serial.printf("Inc Time: %ld\n", (long int)inc_time); 
-    // cast to normal long to allow for negatives
-    if (((long)(sys_epoch_time - inc_time)) > 15) { 
-      server.send(400, "text/plain", "Took over 15 seconds to send, or you're sending fake requests.");
-      return;
-    }
-
-    if (((long)(sys_epoch_time - inc_time)) < (-5)) { 
-      server.send(400, "text/plain", "You sent this request over 5 seconds in the past, stop sending fake requests.");
-      return;
-    }
-  }
-
-  if (strcmp(inc_hash_str, "") == 0) {
-    server.send(400, "text/plain", "Stop the fake requests.");
-    return;
-  }
-
-
-  SHA256 hasher;
-  
-  //An attempt to deallocate some memory first.
-  if (true) {
-    Serial.printf("Adding time:   %s\n", inc_time_str);
-    hasher.doUpdate(inc_time_str);
-
-    Serial.printf("Adding color: %s\n", warn_color);
-    hasher.doUpdate(warn_color);
-
-    File verif_file = LittleFS.open("/verif.txt", "r");
-    String verif_str = verif_file.readString();
-    const char *verif_chars = verif_str.c_str();
-    verif_file.close();
-
-    Serial.printf("Adding verif: %s\n", verif_chars);
-    hasher.doUpdate(verif_chars);
-
-    File pass_file = LittleFS.open("/pass.txt", "r");
-    String pass_str = pass_file.readString();
-    const char *pass_chars = pass_str.c_str();
-    pass_file.close();
-
-    Serial.println("Adding pass"); //  %s\n", pass_chars);
-    hasher.doUpdate(pass_chars);
-  }
-
-  byte calc_hash[SHA256_SIZE];
-  hasher.doFinal(calc_hash);
-
-
-  //Code taken from Serial.print()
-  char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
-  char *hash_str = &buf[sizeof(buf) - 1];
-
-  *hash_str = '\0';
-
-  // Code taken from Serial.print() and modified to work for my scenario.
-  // Apparently the original doesn't fully work, probably edge case.
-  for (int i = (SHA256_SIZE-1); i >= 0; i--) {
-    unsigned long hash_long = (unsigned long)calc_hash[i];
-    for (int j = 0; j <= 1; j++ ) {
-      unsigned long m = hash_long;
-      hash_long /= HEX;
-      char c = m - HEX * hash_long;
-      *--hash_str = (c < 10 ? (c + '0') : c + 'A' - 10);
-    }
-  }
-
-
-  Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-  Serial.printf("Calculated Hash: %s\n", hash_str);
-
-  ESP.wdtFeed(); // Before watchdog bites me.
-
-  if (strcmp(hash_str, inc_hash_str) == 0) {
-    Serial.println("Password matches");
-    server.send(200, "text/plain", "Password Good.");
-  }
-  else {
-    Serial.println("Password do not match");
-    server.send(401, "text/plain", "Wrong password.");
-    return;
-  }
-
-  Serial.printf("Writing to add time file: %s\n", warn_color);
+  Serial.printf("Writing to warn color file: %s\n", warn_color);
   File warn_color_file = LittleFS.open("/timer/warn_color.txt", "w");
   warn_color_file.write(warn_color);
   warn_color_file.close();
+
+  Serial.printf("Writing to stop color file: %s\n", stop_color);
+  File stop_color_file = LittleFS.open("/timer/stop_color.txt", "w");
+  stop_color_file.write(stop_color);
+  stop_color_file.close();
 }
 
 void handleSetWarning(void) {
@@ -1472,7 +1390,7 @@ void handleSetWarning(void) {
     Serial.printf("Adding warn_t: %s\n", warn_time_str);
     hasher.doUpdate(warn_time_str);
 
-    Serial.printf("Adding enb_d: %s\n", enabled);
+    Serial.printf("Adding enb_d:  %s\n", enabled);
     hasher.doUpdate(enabled);
 
     File verif_file = LittleFS.open("/verif.txt", "r");
@@ -1480,7 +1398,7 @@ void handleSetWarning(void) {
     const char *verif_chars = verif_str.c_str();
     verif_file.close();
 
-    Serial.printf("Adding verif: %s\n", verif_chars);
+    Serial.printf("Adding verif:  %s\n", verif_chars);
     hasher.doUpdate(verif_chars);
 
     File pass_file = LittleFS.open("/pass.txt", "r");
@@ -1694,7 +1612,7 @@ void handleSetIdle(void) {
     const char *verif_chars = verif_str.c_str();
     verif_file.close();
 
-    Serial.printf("Adding verif: %s\n", verif_chars);
+    Serial.printf("Adding verif:  %s\n", verif_chars);
     hasher.doUpdate(verif_chars);
 
     File pass_file = LittleFS.open("/pass.txt", "r");
@@ -1757,6 +1675,7 @@ void handleSetIdle(void) {
 
   changeIdle();
 }
+
 
 void readButton(void) {
   if(digitalRead(BUTTON_PIN) == LOW) {
@@ -1845,8 +1764,7 @@ void setup(void) {
     server.on("/getsettings", handleGetSettings);
     server.on("/warn", handleSetWarning);
     server.on("/idle", handleSetIdle);
-    server.on("/normcolor", handleSetNormColor);
-    server.on("/warncolor", handleSetWarnColor);
+    server.on("/opcolors", handleSetOpColors);
   }
   else {
     Serial.println("CV0: False");
