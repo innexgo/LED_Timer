@@ -1,5 +1,7 @@
 "use strict"
 
+var timer_enabled = false;
+
 window.onload = function () {
     var divOne = document.getElementById("timer");
     var divTwo = document.getElementById("timer-change");
@@ -30,7 +32,7 @@ function setCountdown() {
     var time = ((parseInt(hours) * 3600) + (parseInt(minutes) * 60) + parseInt(seconds));
 
     sessionStorage.setItem("time", time);
-    end_time_epoch = String(Date.now() + time * 1000);
+    var end_time_epoch = String(Date.now() + time * 1000);
     sessionStorage.setItem("epoch_time", end_time_epoch);
 
     sendToTimer();
@@ -148,7 +150,7 @@ timer.addEventListener('submit', handleTimer);
 
 function sendToTimer() {
     var cur_time = String(Date.now())
-    var epoch_end_time = String(end_time_epoch);
+    var epoch_end_time = String(sessionStorage.getItem("epoch_time"));
     var seconds = String(sessionStorage.getItem("time"));
     var password = String(sessionStorage.getItem("password"));
     var verification = String(document.getElementById("verification").innerText);
@@ -185,9 +187,9 @@ function sendToTimer() {
 };
 
 
-interval = 1000;
-expected = Date.now() + interval;
-clock = setTimeout(step, interval);
+var interval = 1000;
+var expected = Date.now() + interval;
+var clock = setTimeout(step, interval);
 
 
 function step() {

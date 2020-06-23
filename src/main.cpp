@@ -30,6 +30,8 @@ CRGB leds[NUM_LEDS];
 String default_color = "686868";
 boolean has_internet = false;
 
+boolean timer_on = false;
+
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", NTP_OFFSET, NTP_INTERVAL);
 
@@ -1813,8 +1815,12 @@ void loop(void) {
   if (has_internet) {
     timeClient.update();
   }
+
   ESP.wdtFeed(); // Watchdog is watching along with big brother.
-  //unsigned long current_ms = millis();
+  
+  if (timer_on) {
+    
+  }
 
   readButton();
 }

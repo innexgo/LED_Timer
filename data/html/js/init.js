@@ -47,11 +47,11 @@ function wifi_type() {
     }
 };
 
-form0 = document.getElementById("none");
-form1 = document.getElementById("WPA2");
-form2 = document.getElementById("WPA2-E");
-form3 = document.getElementById("unsecured");
-form4 = document.getElementById("credentials");
+const form0 = document.getElementById("none");
+const form1 = document.getElementById("WPA2");
+const form2 = document.getElementById("WPA2-E");
+const form3 = document.getElementById("unsecured");
+const form4 = document.getElementById("credentials");
 
 
 /*
