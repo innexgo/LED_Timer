@@ -31,11 +31,25 @@ String default_color = "686868";
 boolean has_internet = false;
 
 boolean timer_on = false;
+boolean add_time = false;
+long millis_offset = 0;
+int lit_LED_count = 0;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", NTP_OFFSET, NTP_INTERVAL);
 
 ESP8266WebServer server(80);
+
+
+void initTimer(void) {
+}
+
+void setTimer(void) {
+}
+
+void timerAdd(void) {
+}
+
 
 void changeIdle(void) {
   File config_file = LittleFS.open("/config.txt", "r");
@@ -1808,18 +1822,63 @@ void setup(void) {
   server.begin();
 }
 
+int millis_track = 0;
+unsigned long real_millis_check = 0;
+unsigned long real_millis;
+unsigned long corrected_millis;
+boolean initialized = false;
+unsigned long expected_epoch_time;
+long slewed_offset;
+
+void updateOffset(void) {
+  if ((unsigned long)(real_millis - real_millis_check) >= 10000) {
+    millis_offset = (timeClient.getEpochTime() - expected_epoch_time);
+    expected_epoch_time += 10;
+    real_millis_check = real_millis;
+
+    if (slewed_offset == (millis_offset * 1000)) {
+      // do nothing.
+    }
+    else if (slewed_offset < (millis_offset * 1000)) {
+      slewed_offset += 125;
+    }
+    else if (slewed_offset > (millis_offset * 1000)) {
+      slewed_offset -= 125;
+    }
+    // Serial.printf("%d %d\n", millis_track, millis_offset);
+    // Serial.printf("Current Epoch time:  %d\n", timeClient.getEpochTime());
+    // Serial.printf("Current millis time: %d\n", real_millis);
+    // Serial.printf("Corrected millis:    %d\n", corrected_millis);
+  }
+}
 
 void loop(void) {
+  real_millis = millis();
+  corrected_millis = (millis() + slewed_offset);
+
   server.handleClient();
+
+  if (add_time) {
+    timerAdd();
+    add_time = false;
+  }
 
   if (has_internet) {
     timeClient.update();
+    if (initialized){
+      updateOffset();
+    }
+    else {
+      expected_epoch_time = (timeClient.getEpochTime() + 10);
+      real_millis_check = real_millis;
+      initialized = true;
+    }
   }
 
   ESP.wdtFeed(); // Watchdog is watching along with big brother.
-  
+
   if (timer_on) {
-    
+    setTimer();
   }
 
   readButton();
