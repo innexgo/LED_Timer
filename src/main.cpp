@@ -1827,6 +1827,7 @@ unsigned long real_millis_check = 0;
 unsigned long real_millis;
 unsigned long corrected_millis;
 boolean initialized = false;
+boolean offset_enable = true;
 unsigned long expected_epoch_time;
 long slewed_offset;
 
@@ -1835,6 +1836,11 @@ void updateOffset(void) {
     millis_offset = (timeClient.getEpochTime() - expected_epoch_time);
     expected_epoch_time += 10;
     real_millis_check = real_millis;
+
+    if (((slewed_offset - (millis_offset * 1000)) > 30000) || ((slewed_offset - (millis_offset * 1000)) < -30000)) {
+      Serial.printf("Current Broken Epoch time:  %d\n", timeClient.getEpochTime());
+      timeClient.forceUpdate();
+    }
 
     if (slewed_offset == (millis_offset * 1000)) {
       // do nothing.
@@ -1845,10 +1851,11 @@ void updateOffset(void) {
     else if (slewed_offset > (millis_offset * 1000)) {
       slewed_offset -= 125;
     }
-    // Serial.printf("%d %d\n", millis_track, millis_offset);
-    // Serial.printf("Current Epoch time:  %d\n", timeClient.getEpochTime());
-    // Serial.printf("Current millis time: %d\n", real_millis);
-    // Serial.printf("Corrected millis:    %d\n", corrected_millis);
+
+    Serial.printf("%d %d\n", millis_track, millis_offset);
+    Serial.printf("Current Epoch time:  %d\n", timeClient.getEpochTime());
+    Serial.printf("Current millis time: %d\n", real_millis);
+    Serial.printf("Corrected millis:    %d\n", corrected_millis);
   }
 }
 
@@ -1872,6 +1879,8 @@ void loop(void) {
       expected_epoch_time = (timeClient.getEpochTime() + 10);
       real_millis_check = real_millis;
       initialized = true;
+      Serial.printf("Init Epoch time:  %d\n", timeClient.getEpochTime());
+      Serial.printf("Init millis time: %d\n", real_millis);
     }
   }
 

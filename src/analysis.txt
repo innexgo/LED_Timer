@@ -1,0 +1,48 @@
+Current init time:   1592958360
+Current init millis: 12082
+11 0
+Current Epoch time:  1592958370
+Current millis time: 23162
+11 1000
+Current Epoch time:  1592958381
+Current millis time: 34162
+11 1000
+Current Epoch time:  1592958391
+Current millis time: 43162
+11 2000
+Current Epoch time:  1592958402
+Current millis time: 54162
+11 2000
+Current Epoch time:  1592958412
+Current millis time: 63162
+11 3000
+Current Epoch time:  1592958423
+Current millis time: 74202
+11 3000
+Current Epoch time:  1592958433
+Current millis time: 83202
+
+
+Current init time:   1592960270
+Current init millis: 11999
+10 -1000
+Current Epoch time:  1592960279
+Current millis time: 21999
+10 -2000
+Current Epoch time:  1592960288
+Current millis time: 29999
+10 -3000
+Current Epoch time:  1592960297
+Current millis time: 37999
+10 -4000
+Current Epoch time:  1592960306
+Current millis time: 45999
+10 -5000
+Current Epoch time:  1592960315
+Current millis time: 53999
+10 -6000
+Current Epoch time:  1592960324
+Current millis time: 61999
+
+1592961435
+752642
