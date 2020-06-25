@@ -63,9 +63,7 @@ function countdown() {
 
         document.getElementById('timeleft').innerText = formatTime(time);
         time--;
-        sessionStorage.setItem("time", time);
         validateTimeDiff();
-
     }
     else {
         return null;
@@ -229,8 +227,8 @@ function addTime() {
     var mod_epoch_end_time = epoch_end_time + dtime * 1000;
     mod_epoch_end_time = String(mod_epoch_end_time);
 
-    var seconds = String(sessionStorage.getItem("time"));
-    var mod_seconds = seconds + dtime;
+    var seconds = parseInt(sessionStorage.getItem("time"));
+    var mod_seconds = parseInt(seconds + dtime);
     mod_seconds = String(mod_seconds);
 
     var subtle = String(document.getElementById("subtle-change").checked)
@@ -250,7 +248,11 @@ function addTime() {
     var xhrRequest = postData(data, "/timer");
     xhrRequest.then(
         function () {
+            var epoch_end_time = parseInt(sessionStorage.getItem("epoch_time"));
+            var mod_epoch_end_time = epoch_end_time + (dtime * 1000);
             sessionStorage.setItem("epoch_time", mod_epoch_end_time);
+            var seconds = parseInt(sessionStorage.getItem("time"));
+            var mod_seconds = parseInt(seconds + dtime);
             sessionStorage.setItem("time", mod_seconds);
         },
         (response) => {

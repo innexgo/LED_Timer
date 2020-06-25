@@ -27,11 +27,10 @@
 
 CRGB leds[NUM_LEDS];
 
-String default_color = "686868";
+String default_idle_color = "686868";
 boolean has_internet = false;
 
 boolean timer_on = false;
-boolean add_time = false;
 long millis_offset = 0;
 int millis_track = 0;
 unsigned long real_millis_check = 0;
@@ -55,6 +54,11 @@ boolean warn_section = false;
 boolean stop_section = false;
 int LED_color;
 unsigned long duration_time;
+int active_LEDs = 0;
+unsigned long timer_count_offset;
+
+unsigned long prev_timer_check = 0;
+unsigned long check_timer_interval = 1000;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", NTP_OFFSET, NTP_INTERVAL);
@@ -98,13 +102,13 @@ void changeIdle(void) {
     Serial.println("Idle Color: True");
 #endif
     int color = std::strtol(config_values[2], 0, 16);
-    fill_solid(leds, 60, CRGB(color));
+    fill_solid(leds, NUM_LEDS, CRGB(color));
     FastLED.show();
   } else {
 #ifdef DEBUG
     Serial.println("Idle Color: False");
 #endif
-    fill_solid(leds, 60, CRGB(0));
+    fill_solid(leds, NUM_LEDS, CRGB(0));
     FastLED.show();
   }
 }
@@ -126,7 +130,7 @@ void initTimer(void) {
   Serial.print("Duration: ");
   Serial.println(duration_time);
 #endif
-  time_per_led = (60.0/((int)duration_time*2.0));
+  time_per_led = (((double)NUM_LEDS)/((int)duration_time*2.0));
 #ifdef DEBUG
   Serial.printf("LEDs per half second: %f\n", time_per_led);
 #endif
@@ -134,8 +138,11 @@ void initTimer(void) {
   previous_timer_millis = corrected_millis;
 
   timer_count = 0;
-  lit_LED_count = 60;
+  timer_count_offset = 0;
+  lit_LED_count = NUM_LEDS;
   dark_LED_count = 0;
+  active_LEDs = NUM_LEDS;
+  check_timer_interval = 1000;
 
   File color_file = LittleFS.open("/timer/norm_color.txt", "r");
   String color_string = color_file.readString();
@@ -143,7 +150,7 @@ void initTimer(void) {
   color_file.close();
   LED_color = std::strtol(color_chars, 0, 16);
 
-  fill_solid(leds, 60, CRGB(LED_color));
+  fill_solid(leds, NUM_LEDS, CRGB(LED_color));
   FastLED.show();
   warn_section = false;
   stop_section = false;
@@ -172,15 +179,12 @@ void tickTimer(void) {
     }
 
     if (!stop_section) {
-      dark_LED_count = (int)(timer_count * time_per_led);
-      lit_LED_count = (60 - dark_LED_count);
+      dark_LED_count = (int)((timer_count-timer_count_offset) * time_per_led);
+      lit_LED_count = (active_LEDs - dark_LED_count);
 #ifdef DEBUG
       Serial.printf("%d, %d\n", lit_LED_count, dark_LED_count);
 #endif
-      // for (int i = 59; i >= lit_LED_count; i--) {
-      //   leds[i] = 0x000000;
-      // }
-      fill_solid(leds, 60, CRGB(0));
+      fill_solid(leds, NUM_LEDS, CRGB(0));
       fill_solid(leds, lit_LED_count, CRGB(LED_color));
       FastLED.show();
     }
@@ -196,7 +200,7 @@ void tickTimer(void) {
       const char *color_chars = color_string.c_str();
       color_file.close();
       LED_color = std::strtol(color_chars, 0, 16);
-      fill_solid(leds, 60, CRGB(LED_color));
+      fill_solid(leds, NUM_LEDS, CRGB(LED_color));
       FastLED.show();
     }
 
@@ -208,6 +212,89 @@ void tickTimer(void) {
 }
 
 void timerAdd(void) {
+  File add_time_file = LittleFS.open("/timer/add.txt", "r");
+  int add_time_size = add_time_file.size();
+
+  char add_time_chars[add_time_size + 1];
+  byte size = add_time_file.readBytes(add_time_chars, add_time_size);
+
+  add_time_file.close();
+
+  add_time_chars[size] = 0;
+
+  char *delimiters = " ,.-";
+
+  char *pch = strtok(add_time_chars, delimiters);
+
+  char *add_time_values[3];
+
+  /* Config values:
+  // 0: Subtle
+  // 1: Duration
+  // 2: End time epoch
+  */
+
+  int pos = 0;
+
+  while (pch != NULL) {
+    add_time_values[pos] = pch;
+    pos++;
+    pch = strtok(0, delimiters);
+  }
+
+  char *true_ptr = "true";
+  
+  int length = strlen(add_time_values[1]);
+
+  char *duration_chars = add_time_values[1];
+  unsigned long local_duration_time = 0;
+  for (int pos = (length - 1); pos >= 0; pos--) {
+    local_duration_time += (int)((((char)*(duration_chars++)) - '0') * ((int)pow(10, pos)));
+  }
+#ifdef DEBUG
+  Serial.print("Duration: ");
+  Serial.println(local_duration_time);
+#endif
+
+  if (strcmp(add_time_values[0], true_ptr) == 0) {
+    time_per_led = (lit_LED_count/((int)local_duration_time*2.0));
+    active_LEDs = lit_LED_count;
+    timer_count_offset += timer_count;
+    timer_count = 0;
+  }
+  else {
+    time_per_led = (active_LEDs/((int)local_duration_time*2.0));
+  }
+
+  duration_time = local_duration_time;
+#ifdef DEBUG
+  Serial.printf("LEDs per half second: %f\n", time_per_led);
+#endif
+
+
+  File duration_file = LittleFS.open("/timer/duration.txt", "w");
+  const char *new_duration = add_time_values[1];
+#ifdef DEBUG
+  Serial.printf("Wrote to duration file: %s\n", add_time_values[1]);
+#endif
+  duration_file.write(new_duration);
+  duration_file.close();
+
+  File end_time_file = LittleFS.open("/timer/end_time.txt", "w");
+#ifdef DEBUG
+  Serial.printf("Wrote to end_time file: %s\n", add_time_values[2]);
+#endif
+  const char *new_epoch_end_time = add_time_values[2];
+  end_time_file.write(new_epoch_end_time);
+  end_time_file.close();
+
+#ifdef DEBUG
+  Serial.println("Cleared timer add file");
+#endif
+  //Redeclare to clear.
+  File add_time_file_clr = LittleFS.open("/timer/add.txt", "w");
+  add_time_file_clr.write("");
+  add_time_file_clr.close();
 }
 
 
@@ -528,7 +615,7 @@ void handleCredentialsConfig(void) {
   server.send(200, "text/plain", "Valid Data Recieved");
 
   File config_file = LittleFS.open("/config.txt", "w");
-  const char *to_write = default_color.c_str();
+  const char *to_write = default_idle_color.c_str();
   config_file.write("true true ");
   config_file.write(to_write);
   ;
@@ -873,7 +960,6 @@ void handleSetTimer(void) {
 #endif
 #ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "hash") {
@@ -1132,6 +1218,8 @@ void handleSetTimer(void) {
     File add_time_file = LittleFS.open("/timer/add.txt", "w");
     add_time_file.write(to_write_char);
     add_time_file.close();
+
+    timerAdd();
   }
 }
 
@@ -2058,7 +2146,7 @@ void handleSetIdle(void) {
   changeIdle();
 }
 
-void readButton(void) {
+void clearFlashButton(void) {
   if (digitalRead(BUTTON_PIN) == LOW) {
     // TODO Reset stuff
     LittleFS.remove("/config.txt");  // Ensure the file is removed.
@@ -2068,15 +2156,37 @@ void readButton(void) {
     LittleFS.remove("/wifi/SSID.txt");
     LittleFS.remove("/wifi/hostname.txt");
     LittleFS.remove("/wifi/method.txt");
+    LittleFS.remove("/timer/warn.txt");
     File config_file = LittleFS.open("/config.txt", "w");
-    const char *to_write = default_color.c_str();
-    config_file.write("true true ");
+    const char *to_write = default_idle_color.c_str();
+    config_file.write("false true ");
     config_file.write(to_write);
     config_file.close();
 
 #ifdef DEBUG
     Serial.printf("Wrote to /config.txt: %s\n", to_write);
 #endif
+
+#ifdef DEBUG
+  Serial.printf("Writing to norm color file: 33bb22\n");
+#endif
+  File norm_color_file = LittleFS.open("/timer/norm_color.txt", "w");
+  norm_color_file.write("33bb22");
+  norm_color_file.close();
+
+#ifdef DEBUG
+  Serial.printf("Writing to warn color file: dddd11\n");
+#endif
+  File warn_color_file = LittleFS.open("/timer/warn_color.txt", "w");
+  warn_color_file.write("dddd11");
+  warn_color_file.close();
+
+#ifdef DEBUG
+  Serial.printf("Writing to stop color file: 880000\n");
+#endif
+  File stop_color_file = LittleFS.open("/timer/stop_color.txt", "w");
+  stop_color_file.write("880000");
+  stop_color_file.close();
   }
 }
 
@@ -2204,6 +2314,47 @@ void setup(void) {
 }
 
 void checkActiveTimer(void) {
+  if ((real_millis - prev_timer_check) >= check_timer_interval) {
+    prev_timer_check = real_millis;
+#ifdef DEBUG
+    Serial.printf("Checking for unfinished timer. Interval: %lu\n", check_timer_interval);
+#endif
+    check_timer_interval += check_timer_interval;
+    
+    File end_epoch_file = LittleFS.open("/timer/end_time.txt", "r");
+    String end_epoch_string = end_epoch_file.readString();
+    const char *end_epoch_chars = end_epoch_string.c_str();
+    end_epoch_file.close();
+
+    int length = strlen(end_epoch_chars);
+    unsigned long end_epoch_value = 0;
+
+    for (int pos = (length - 4); pos >= 0; pos--) {
+      end_epoch_value += (unsigned long)((((char)*(end_epoch_chars++)) - '0') * ((unsigned long)pow(10, pos)));
+    }
+
+#ifdef DEBUG
+    Serial.printf("End Epoch Value: %s\n", (end_epoch_string.c_str()));
+#endif
+    if (end_epoch_value > (timeClient.getEpochTime())) {
+#ifdef DEBUG
+    Serial.println("Unfinished timer");
+    Serial.printf("End Epoch Value: %lu\n", end_epoch_value);
+#endif
+      initTimer();
+
+      // File duration_file = LittleFS.open("/timer/duration.txt", "r");
+      // String duration_string = duration_file.readString();
+      // const char *duration_chars = duration_string.c_str();
+      // duration_file.close();
+
+      // unsigned long loc_duration_time = 0;
+      // for (int pos = (length - 1); pos >= 0; pos--) {
+      //   loc_duration_time += (int)((((char)*(duration_chars++)) - '0') * ((int)pow(10, pos)));
+      // }
+      timer_count = ((duration_time - (end_epoch_value - timeClient.getEpochTime())) * 2);
+    }
+  }
 }
 
 void updateOffset(void) {
@@ -2226,11 +2377,18 @@ void updateOffset(void) {
       Serial.printf("Corrected millis:    %d\n", corrected_millis);
 #endif
       timeClient.forceUpdate();
+      if (timer_on) {
+        timer_count += (int)((millis()-real_millis)/500);
+      }
+
+      if (((millis_offset * 1000) - slewed_offset) > 1593000000) {
+#ifdef DEBUG
+      Serial.println("Shifting expected time drastically.");
+#endif
+      expected_epoch_time = timeClient.getEpochTime() + 10;
+      }
     }
 
-    if (((millis_offset * 1000) - slewed_offset) > 1593000000000) {
-      expected_epoch_time = timeClient.getEpochTime() + 10;
-    }
 
     if (slewed_offset == (millis_offset * 1000)) {
       // do nothing.
@@ -2248,11 +2406,6 @@ void loop(void) {
 
   server.handleClient();
 
-  if (add_time) {
-    timerAdd();
-    add_time = false;
-  }
-
   if (has_internet) {
     timeClient.update();
     if (initialized) {
@@ -2267,8 +2420,11 @@ void loop(void) {
 #ifdef DEBUG
       Serial.printf("Init millis time: %d\n", real_millis);
 #endif
-      checkActiveTimer();
     }
+  }
+
+  if (!timer_on && has_internet && (timeClient.getEpochTime() > 1593000000)) {
+    checkActiveTimer();
   }
 
   ESP.wdtFeed();  // Watchdog is watching along with big brother.
@@ -2277,5 +2433,5 @@ void loop(void) {
     tickTimer();
   }
 
-  readButton();
+  clearFlashButton();
 }
