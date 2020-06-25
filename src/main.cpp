@@ -257,10 +257,9 @@ void timerAdd(void) {
 #endif
 
   if (strcmp(add_time_values[0], true_ptr) == 0) {
-    time_per_led = (lit_LED_count/((int)local_duration_time*2.0));
     active_LEDs = lit_LED_count;
-    timer_count_offset += timer_count;
-    timer_count = 0;
+    time_per_led = ((double)active_LEDs/(((double)local_duration_time*2.0) - timer_count));
+    timer_count_offset = timer_count;
   }
   else {
     time_per_led = (active_LEDs/((int)local_duration_time*2.0));
