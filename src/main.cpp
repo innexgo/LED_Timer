@@ -9,7 +9,6 @@
 #include <regex.h>
 #include <stdlib.h>
 
-#include <sstream>
 
 #define FASTLED_ESP8266_RAW_PIN_ORDER
 #include <FastLED.h>
@@ -17,17 +16,17 @@
 #include "Crypto.h"
 #include "wifi_select.h"
 
+#define DEBUG
 #define NUM_LEDS 60
 #define DATA_PIN 13
+#define DEFAULT_COLOR "686868"
 #define BUTTON_PIN 5
-#define DEBUG
 #define UTC_OFFSET 2208988800ULL
 #define NTP_OFFSET 0                // In seconds
 #define NTP_INTERVAL 2 * 60 * 1000  // In miliseconds
 
 CRGB leds[NUM_LEDS];
 
-String default_idle_color = "686868";
 boolean has_internet = false;
 
 boolean timer_on = false;
@@ -42,7 +41,6 @@ unsigned long expected_epoch_time;
 long slewed_offset;
 
 unsigned long timer_count = 0;
-//double led_per_half_sec = 0;
 double time_per_led = 0.0; // really should be led_per_time but I don't want to break it.
 unsigned long previous_timer_millis;
 int lit_LED_count = 0;
@@ -453,10 +451,7 @@ void handleWifiConfig(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "SSID") {
@@ -532,8 +527,6 @@ void handleCredentialsConfig(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
 #endif
 
@@ -614,7 +607,7 @@ void handleCredentialsConfig(void) {
   server.send(200, "text/plain", "Valid Data Recieved");
 
   File config_file = LittleFS.open("/config.txt", "w");
-  const char *to_write = default_idle_color.c_str();
+  const char *to_write = DEFAULT_COLOR;
   config_file.write("true true ");
   config_file.write(to_write);
   ;
@@ -626,12 +619,11 @@ void handleCredentialsConfig(void) {
 
   delay(200);
 
-  void (*resetFunc)(void) = 0;  //declare reset function at address 0
-
 #ifdef DEBUG
   Serial.println("Restarting");
 #endif
-  resetFunc();
+
+  ESP.restart();
 }
 
 void generateVerificationJSFile(void) {
@@ -663,17 +655,13 @@ void generateVerification(void) {
   Serial.printf("Length of Verif Data: %d\n", gen_length);
 #endif
 
-#ifdef DEBUG
   //Code taken from Serial.print()
-#endif
   char buf[8 * sizeof(long) + 1];  // Assumes 8-bit chars plus zero byte.
   char *hash_str = &buf[sizeof(buf) - 1];
 
   *hash_str = '\0';
 
-#ifdef DEBUG
   // Code taken from Serial.print() and modified to work for my scenario.
-#endif
   // Apparently the original doesn't fully work, probably edge case.
   for (int i = (SHA256_SIZE - 1); i >= 0; i--) {
     unsigned long hash_long = (unsigned long)hash[i];
@@ -689,7 +677,7 @@ void generateVerification(void) {
 #endif
 
   char hash_char_str[65];
-  hash_char_str[65] = 0;
+  hash_char_str[65] = '\0';
   strcpy(hash_char_str, hash_str);
   File verification_file = LittleFS.open("verif.txt", "w");
   verification_file.write((const char *)hash_char_str);
@@ -753,10 +741,7 @@ void handleCredentialLogin(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "hash") {
@@ -807,8 +792,6 @@ void handleCredentialLogin(void) {
 
 #ifdef DEBUG
     Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-#endif
-#ifdef DEBUG
     Serial.printf("Inc Time: %ld\n", (long int)inc_time);
 #endif
     // cast to normal long to allow for negatives
@@ -890,8 +873,6 @@ void handleCredentialLogin(void) {
 
 #ifdef DEBUG
   Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-#endif
-#ifdef DEBUG
   Serial.printf("Calculated Hash: %s\n", hash_str);
 #endif
 
@@ -956,8 +937,6 @@ void handleSetTimer(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
 #endif
 
@@ -1070,8 +1049,6 @@ void handleSetTimer(void) {
 
 #ifdef DEBUG
     Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-#endif
-#ifdef DEBUG
     Serial.printf("Inc Time: %ld\n", (long int)inc_time);
 #endif
     // cast to normal long to allow for negatives
@@ -1160,8 +1137,6 @@ void handleSetTimer(void) {
 
 #ifdef DEBUG
   Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-#endif
-#ifdef DEBUG
   Serial.printf("Calculated Hash: %s\n", hash_str);
 #endif
 
@@ -1326,10 +1301,7 @@ void handleSetOpColors(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "hash") {
@@ -1536,8 +1508,6 @@ void handleSetOpColors(void) {
 
 #ifdef DEBUG
     Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-#endif
-#ifdef DEBUG
     Serial.printf("Inc Time: %ld\n", (long int)inc_time);
 #endif
     // cast to normal long to allow for negatives
@@ -1629,8 +1599,6 @@ void handleSetOpColors(void) {
 
 #ifdef DEBUG
   Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-#endif
-#ifdef DEBUG
   Serial.printf("Calculated Hash: %s\n", hash_str);
 #endif
 
@@ -1686,10 +1654,7 @@ void handleSetWarning(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "hash") {
@@ -1771,8 +1736,6 @@ void handleSetWarning(void) {
 
 #ifdef DEBUG
     Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-#endif
-#ifdef DEBUG
     Serial.printf("Inc Time: %ld\n", (long int)inc_time);
 #endif
     // cast to normal long to allow for negatives
@@ -1859,8 +1822,6 @@ void handleSetWarning(void) {
 
 #ifdef DEBUG
   Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-#endif
-#ifdef DEBUG
   Serial.printf("Calculated Hash: %s\n", hash_str);
 #endif
 
@@ -1909,10 +1870,7 @@ void handleSetIdle(void) {
   for (uint8_t i = 0; i < server.args(); i++) {
 #ifdef DEBUG
     Serial.printf("%s ", server.argName(i).c_str());
-#endif
-#ifdef DEBUG
     Serial.println(server.arg(i));
-    ;
 #endif
 
     if (server.argName(i) == "hash") {
@@ -2021,8 +1979,6 @@ void handleSetIdle(void) {
 
 #ifdef DEBUG
     Serial.printf("Cur Time: %ld\n", sys_epoch_time);
-#endif
-#ifdef DEBUG
     Serial.printf("Inc Time: %ld\n", (long int)inc_time);
 #endif
     // cast to normal long to allow for negatives
@@ -2109,8 +2065,6 @@ void handleSetIdle(void) {
 
 #ifdef DEBUG
   Serial.printf("Incoming Hash:   %s\n", inc_hash_str);
-#endif
-#ifdef DEBUG
   Serial.printf("Calculated Hash: %s\n", hash_str);
 #endif
 
@@ -2147,23 +2101,44 @@ void handleSetIdle(void) {
 
 void clearFlashButton(void) {
   if (digitalRead(BUTTON_PIN) == LOW) {
+
+    ESP8266TrueRandomClass random_gen;
+
+    char random_buf[51];
+    random_gen.memfill(&random_buf[0], 50);
+    random_buf[51] = '\0';
+    const char *random_data = &random_buf[0];
+
     // TODO Reset stuff
     LittleFS.remove("/config.txt");  // Ensure the file is removed.
-    LittleFS.remove("/pass.txt");
     LittleFS.remove("/wifi/user.txt");
+    
+    File pass_file = LittleFS.open("/pass.txt", "w");
+    pass_file.write(random_data); //ensure overwrite.
+    pass_file.close();
+    LittleFS.remove("/pass.txt");
+
+    File wifi_pass_file = LittleFS.open("/wifi/pass.txt", "w");
+    wifi_pass_file.write(random_data); //ensure overwrite.
+    wifi_pass_file.close();
     LittleFS.remove("/wifi/pass.txt");
+
     LittleFS.remove("/wifi/SSID.txt");
     LittleFS.remove("/wifi/hostname.txt");
     LittleFS.remove("/wifi/method.txt");
     LittleFS.remove("/timer/warn.txt");
+    File warn_file = LittleFS.open("/timer/warn.txt", "w");
+    warn_file.write("false 0");
+    warn_file.close();
+
     File config_file = LittleFS.open("/config.txt", "w");
-    const char *to_write = default_idle_color.c_str();
+    const char *to_write = DEFAULT_COLOR;
     config_file.write("false true ");
     config_file.write(to_write);
     config_file.close();
 
 #ifdef DEBUG
-    Serial.printf("Wrote to /config.txt: %s\n", to_write);
+    Serial.println("Reset /config.txt.");
 #endif
 
 #ifdef DEBUG
@@ -2186,6 +2161,8 @@ void clearFlashButton(void) {
   File stop_color_file = LittleFS.open("/timer/stop_color.txt", "w");
   stop_color_file.write("880000");
   stop_color_file.close();
+  
+  ESP.restart();
   }
 }
 
@@ -2342,15 +2319,6 @@ void checkActiveTimer(void) {
 #endif
       initTimer();
 
-      // File duration_file = LittleFS.open("/timer/duration.txt", "r");
-      // String duration_string = duration_file.readString();
-      // const char *duration_chars = duration_string.c_str();
-      // duration_file.close();
-
-      // unsigned long loc_duration_time = 0;
-      // for (int pos = (length - 1); pos >= 0; pos--) {
-      //   loc_duration_time += (int)((((char)*(duration_chars++)) - '0') * ((int)pow(10, pos)));
-      // }
       timer_count = ((duration_time - (end_epoch_value - timeClient.getEpochTime())) * 2);
     }
   }
@@ -2415,8 +2383,6 @@ void loop(void) {
       initialized = true;
 #ifdef DEBUG
       Serial.printf("Init Epoch time:  %d\n", timeClient.getEpochTime());
-#endif
-#ifdef DEBUG
       Serial.printf("Init millis time: %d\n", real_millis);
 #endif
     }
