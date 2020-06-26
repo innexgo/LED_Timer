@@ -2241,7 +2241,8 @@ void setup(void) {
     server.on("/warn", handleSetWarning);
     server.on("/idle", handleSetIdle);
     server.on("/opcolors", handleSetOpColors);
-  } else {
+  } 
+  else {
 #ifdef DEBUG
     Serial.println("CV0: False");
 #endif
