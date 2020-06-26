@@ -58,6 +58,10 @@ unsigned long timer_count_offset;
 unsigned long prev_timer_check = 0;
 unsigned long check_timer_interval = 1000;
 
+boolean force_internet_check = false;
+unsigned long prev_internet_check = 0;
+unsigned long internet_check_interval = 10000;
+
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", NTP_OFFSET, NTP_INTERVAL);
 
@@ -2324,6 +2328,34 @@ void checkActiveTimer(void) {
   }
 }
 
+void checkInternet(void) {
+  if (((real_millis - prev_internet_check) >= internet_check_interval) || force_internet_check) {
+    prev_internet_check = real_millis;
+#ifdef DEBUG
+    Serial.println("Checking for internet");
+#endif
+    if (Ping.ping("http://1.1.1.1")) {
+      has_internet = true;
+#ifdef DEBUG
+      Serial.println("Internet found.");
+#endif
+      if (internet_check_interval >= (30 * 60 * 1000)) {
+        internet_check_interval = (30 * 60 * 1000);
+      } 
+      else {
+        internet_check_interval += internet_check_interval; // Exponential growth if ping is successful, up to 30 * 60 * 1000 ms
+      }
+    }
+    else {
+#ifdef DEBUG
+    Serial.println("No Internet, One min refresh.");
+#endif
+      internet_check_interval = (60 * 1000); // 1 minute refresh.
+      has_internet = false;
+    }
+  }
+}
+
 void updateOffset(void) {
   if ((unsigned long)(real_millis - real_millis_check) >= 10000) {
     millis_offset = (timeClient.getEpochTime() - expected_epoch_time);
@@ -2343,7 +2375,13 @@ void updateOffset(void) {
 #ifdef DEBUG
       Serial.printf("Corrected millis:    %d\n", corrected_millis);
 #endif
-      timeClient.forceUpdate();
+      force_internet_check = true;
+      checkInternet();
+      force_internet_check = false;
+      //forceUpdate is blocking. So reserving it for last.
+      if(has_internet) {
+        timeClient.forceUpdate();
+      }
       if (timer_on) {
         timer_count += (int)((millis()-real_millis)/500);
       }
@@ -2356,7 +2394,6 @@ void updateOffset(void) {
       }
     }
 
-
     if (slewed_offset == (millis_offset * 1000)) {
       // do nothing.
     } else if (slewed_offset < (millis_offset * 1000)) {
@@ -2367,11 +2404,17 @@ void updateOffset(void) {
   }
 }
 
+
+
 void loop(void) {
   real_millis = millis();
   corrected_millis = (millis() + slewed_offset);
 
   server.handleClient();
+
+  if (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
+    checkInternet();
+  }
 
   if (has_internet) {
     timeClient.update();

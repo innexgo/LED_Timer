@@ -33,7 +33,7 @@ void initStationWifi(void) {
     pch = strtok (0, delimiters);
   }
 
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP);
   boolean started = WiFi.softAP(wifi_station_values[0], wifi_station_values[1], 1, 0, 1); // last two are default, but only allow one connector.
 
   while (!started) {
@@ -59,6 +59,7 @@ void setHostname(void) {
 
 void initWifi(void) {
   WiFi.softAPdisconnect();
+  WiFi.mode(WIFI_STA);
   setHostname();
 
   String wifi_method_string;
