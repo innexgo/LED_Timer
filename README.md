@@ -1,6 +1,6 @@
 ## LED Timer
 
-###### C++, JS, HTML, and CSS code written to run on an ESP8266.
+##### C++, JS, HTML, and CSS code written to run on an ESP8266.
 
 Designed to be run on custom hardware, though could be hooked up with a level shifter.
 
@@ -10,25 +10,25 @@ Designed to be run on custom hardware, though could be hooked up with a level sh
 
 ---
 
-- ###### WiFi connected
+- ##### WiFi connected
 
   - Connect through LAN to an onboard web server.
 
-- ###### Password protected
+- ##### Password protected
 
   - Requires login to set timer, prevents unauthorized access.
 
-- ###### Add time to timer
+- ##### Add time to timer
 
-- ###### Customizable color light when idle
+- ##### Customizable color light when idle
 
-- ###### Time slewing
+- ##### Time slewing
 
   - Corrects the time using NTP time (requires internet access)
   - Adjusts the time by 125 ms every 10 sec if the time is off.
   - Internet check every 30 mins max.
 
-- ###### Reset Button
+- ##### Reset Button
 
   - Clears passwords by overwriting passwords with random data and deletes all other files.
 
@@ -57,3 +57,10 @@ Designed to be run on custom hardware, though could be hooked up with a level sh
 - Connects to NTP server to get access to internet time.
 - Used to slew time (by 1/8sec per 10 sec) if millis is either slow or fast.
 
+
+
+#### License
+
+---
+
+Licensed under GNU GPL v3 library.
