@@ -16,7 +16,7 @@
 #include "Crypto.h"
 #include "wifi_select.h"
 
-#define DEBUG
+// #define DEBUG
 #define NUM_LEDS 60
 #define DATA_PIN 13
 #define DEFAULT_COLOR "686868"
